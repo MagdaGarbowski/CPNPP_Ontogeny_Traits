@@ -2,6 +2,8 @@
 ### Janurary 24, 2019 
 ### Plots to be made: 
 
+
+
 # (1) Traits through time: SLA, LDMC, RMR, RDMC, RTD, SRL 
 # (a) Organize species along x-axis by functional group? 
 # (2) Relative change of traits through time for each species 
