@@ -1,4 +1,5 @@
 setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
+source("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/Rscripts/Functions/Functions_TRY_Density.R")
 library(ggplot2)
 library(rstan)
 library(rstanarm)
@@ -94,238 +95,35 @@ Species_SLA_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"SLA")
 Species_SLA_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"SLA") # Divergent transitions
 Species_SLA_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"SLA")
 
-SLA_Species_Ind_RMR_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RMR_100")
+RMR_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RMR_100")
+LDMC_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "LDMC_100")
+RDMC_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RDMC_100")
+RTD_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RTD_100")
+SRL_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "SRL")
 
+# ------------------------- Get values ----------------------------------------------
 
-Species_RMR_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"RMR_100")
-Species_RMR_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"RMR_100")
-Species_RMR_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"RMR_100")
-Species_RMR_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"RMR_100")
-Species_RMR_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"RMR_100")
-Species_RMR_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"RMR_100")
-Species_RMR_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"RMR_100")
-Species_RMR_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"RMR_100")
-Species_RMR_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"RMR_100")
-Species_RMR_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"RMR_100")
-Species_RMR_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"RMR_100")
-
-Species_LDMC_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"LDMC_100")
-Species_LDMC_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"LDMC_100")
-Species_LDMC_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"LDMC_100")
-Species_LDMC_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"LDMC_100")
-Species_LDMC_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"LDMC_100")
-Species_LDMC_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"LDMC_100")
-Species_LDMC_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"LDMC_100")
-Species_LDMC_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"LDMC_100")
-Species_LDMC_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"LDMC_100")
-Species_LDMC_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"LDMC_100")
-Species_LDMC_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"LDMC_100")
-
-
-Species_RDMC_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"RDMC_100")
-Species_RDMC_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"RDMC_100")
-Species_RDMC_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"RDMC_100")
-Species_RDMC_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"RDMC_100")
-Species_RDMC_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"RDMC_100")
-Species_RDMC_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"RDMC_100")
-Species_RDMC_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"RDMC_100")
-Species_RDMC_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"RDMC_100")
-Species_RDMC_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"RDMC_100")
-Species_RDMC_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"RDMC_100")
-Species_RDMC_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"RDMC_100")
-
-Species_RTD_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"RTD_100")
-Species_RTD_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"RTD_100")
-Species_RTD_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"RTD_100")
-Species_RTD_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"RTD_100")
-Species_RTD_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"RTD_100")
-Species_RTD_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"RTD_100")
-Species_RTD_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"RTD_100")
-Species_RTD_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"RTD_100")
-Species_RTD_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"RTD_100")
-Species_RTD_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"RTD_100")
-Species_RTD_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"RTD_100")
-
-Species_SRL_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"SRL")
-Species_SRL_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"SRL")
-Species_SRL_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"SRL")
-Species_SRL_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"SRL")
-Species_SRL_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"SRL")
-Species_SRL_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"SRL")
-Species_SRL_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"SRL")
-Species_SRL_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"SRL")
-Species_SRL_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"SRL")
-Species_SRL_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"SRL")
-Species_SRL_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"SRL")
-
-
-# --------------------------------- Functions 
-# To get posteriors and get them into long format
-get_posts<-function(model, TRYmodel) {
-  tmp1<-as.data.frame(model, regex_pars = "H_num")
-  tmp2<-reshape(tmp1, 
-                direction = "long",
-                varying = c("H_numH1","H_numH2","H_numH3","H_numH4"),
-                v.names = "Value",
-                timevar = "Harvest",
-                times = c("H_numH1","H_numH2","H_numH3","H_numH4"))
-  tmp2<-tmp2[,!names(tmp2) %in% c("id")]
-  rownames(tmp2)<-NULL
-  TRYmodel_1<-as.data.frame(TRYmodel, regex_pars = "Intercept")
-  TRYmodel_1$Harvest <-"TRY"
-  names(TRYmodel_1)[names(TRYmodel_1) == "(Intercept)"]<-"Value"
-  TRYmodel_1<-TRYmodel_1[c("Harvest","Value")]
-  tmp3<-rbind(tmp2,TRYmodel_1)
-  tmp3$Harvest<-factor(tmp3$Harvest, levels = c("TRY","H_numH1", "H_numH2", "H_numH3","H_numH4"))
-  return(tmp3)
-}
-
-
-# To get posteriors and get them into long format
-get_posts_noTRY_grasses<-function(model) {
-  tmp1<-as.data.frame(model, regex_pars = "H_num")
-  tmp2<-reshape(tmp1, 
-                direction = "long",
-                varying = c("H_numH1","H_numH2","H_numH3","H_numH4"),
-                v.names = "Value",
-                timevar = "Harvest",
-                times = c("H_numH1","H_numH2","H_numH3","H_numH4"))
-  tmp2<-tmp2[,!names(tmp2) %in% c("id")]
-  rownames(tmp2)<-NULL
-  tmp2$Harvest<-factor(tmp2$Harvest, levels = c("H_numH1", "H_numH2", "H_numH3","H_numH4"))
-  return(tmp2)
-}
-
-# To get posteriors and get them into long format
-get_posts_noTRY<-function(model) {
-  tmp1<-as.data.frame(model, regex_pars = "H_num")
-  tmp1<-tmp1[,!names(tmp1) %in% c("H_numH1")]
-  tmp2<-reshape(tmp1, 
-                direction = "long",
-                varying = c("H_numH2","H_numH3","H_numH4"),
-                v.names = "Value",
-                timevar = "Harvest",
-                times = c("H_numH2","H_numH3","H_numH4"))
-  tmp2<-tmp2[,!names(tmp2) %in% c("id")]
-  rownames(tmp2)<-NULL
-  tmp2$Harvest<-factor(tmp2$Harvest, levels = c( "H_numH2", "H_numH3","H_numH4"))
-  return(tmp2)
-}
-
-
-get_posts_forbs<-function(model, TRYmodel) {
-  tmp1<-as.data.frame(model, regex_pars = "H_num")
-  tmp1<-tmp1[,!names(tmp1) %in% c("H_numH1")]
-  tmp2<-reshape(tmp1, 
-                direction = "long",
-                varying = c("H_numH2","H_numH3","H_numH4"),
-                v.names = "Value",
-                timevar = "Harvest",
-                times = c("H_numH2","H_numH3","H_numH4"))
-  tmp2<-tmp2[,!names(tmp2) %in% c("id")]
-  rownames(tmp2)<-NULL
-  TRYmodel_1<-as.data.frame(TRYmodel, regex_pars = "Intercept")
-  TRYmodel_1$Harvest <-"TRY"
-  names(TRYmodel_1)[names(TRYmodel_1) == "(Intercept)"]<-"Value"
-  TRYmodel_1<-TRYmodel_1[c("Harvest","Value")]
-  tmp3<-rbind(tmp2,TRYmodel_1)
-  tmp3$Harvest<-factor(tmp3$Harvest, levels = c("TRY", "H_numH2", "H_numH3","H_numH4"))
-  return(tmp3)
-}
-
-
-density_plot<-function(df, lims, adjust, yname, xname){ggplot(df, aes(x = Value, y = Harvest, fill = Harvest)) + 
-    scale_x_continuous(limits = lims,
-                       name = xname)+
-    scale_y_discrete(breaks = c("H_numH4","H_numH3","H_numH2","H_numH1", "TRY"),
-                     labels = c("H_numH1" = "10", "H_numH2" = "24", "H_numH3" = "42", "H_numH4" = "84", "TRY"), 
-                     name = yname,
-                     expand = expand_scale(mult = adjust))+
-    geom_density_ridges(scale = 10, bandwidth = 5, rel_min_height = 0.01,
-                        alpha = .2, color = c("grey40")) + 
-    theme_ridges()+
-    scale_fill_cyclical(values = c("grey90","gray70","grey50","grey30", "grey10"))+
-    coord_cartesian(clip = "off")+
-    theme(axis.title.x = element_blank(),
-          axis.title.y = element_blank())+
-    theme_bw()
-}
-
-# ------------------------- Get values
-
-posts_ACMI<-get_posts_forbs(Species_SLA_ACMI, SLA_TRY_ACMI)
-posts_ARTR<-get_posts_forbs(Species_SLA_ARTR, SLA_TRY_ARTR)
-posts_ELTR<-get_posts(Species_SLA_ELTR, SLA_TRY_ELTR)
-posts_HEAN<-get_posts_forbs(Species_SLA_HEAN, SLA_TRY_HEAN)
-posts_HECO<-get_posts(Species_SLA_HECO, SLA_TRY_HECO)
-posts_PLPA<-get_posts_forbs(Species_SLA_PLPA, SLA_TRY_PLPA)
-posts_PAMU<-get_posts_forbs(Species_SLA_PAMU, SLA_TRY_PAMU)
-posts_VUOC<-get_posts(Species_SLA_VUOC, SLA_TRY_VUOC)
+posts_ACMI<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$ACMI, SLA_TRY_ACMI)
+posts_ARTR<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$ARTR, SLA_TRY_ARTR)
+posts_ELTR<-get_posts(SLA_Species_Ind_SLA_mod_out$ELTR, SLA_TRY_ELTR)
+posts_HEAN<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$HEAN, SLA_TRY_HEAN)
+posts_HECO<-get_posts(SLA_Species_Ind_SLA_mod_out$HECO, SLA_TRY_HECO)
+posts_PLPA<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$PLPA, SLA_TRY_PLPA)
+posts_PAMU<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$PAMU, SLA_TRY_PAMU)
+posts_VUOC<-get_posts(SLA_Species_Ind_SLA_mod_out$VUOC, SLA_TRY_VUOC)
 posts_MACA<-get_posts_noTRY(Species_SLA_MACA)
 posts_MUPO<-get_posts_noTRY_grasses(Species_SLA_MUPO)
 posts_HEVI<-get_posts_noTRY(Species_SLA_HEVI)
 
-posts_ACMI_RMR<-get_posts_noTRY_grasses(Species_RMR_ACMI)
-posts_ARTR_RMR<-get_posts_noTRY_grasses(Species_RMR_ARTR)
-posts_ELTR_RMR<-get_posts_noTRY_grasses(Species_RMR_ELTR)
-posts_HEAN_RMR<-get_posts_noTRY_grasses(Species_RMR_HEAN)
-posts_HECO_RMR<-get_posts_noTRY_grasses(Species_RMR_HECO)
-posts_PLPA_RMR<-get_posts_noTRY_grasses(Species_RMR_PLPA)
-posts_PAMU_RMR<-get_posts_noTRY_grasses(Species_RMR_PAMU)
-posts_VUOC_RMR<-get_posts_noTRY_grasses(Species_RMR_VUOC)
-posts_MACA_RMR<-get_posts_noTRY_grasses(Species_RMR_MACA)
-posts_MUPO_RMR<-get_posts_noTRY_grasses(Species_RMR_MUPO)
-posts_HEVI_RMR<-get_posts_noTRY_grasses(Species_RMR_HEVI)
-
-posts_ACMI_LDMC<-get_posts_noTRY(Species_LDMC_ACMI)
-posts_ARTR_LDMC<-get_posts_noTRY(Species_LDMC_ARTR)
-posts_ELTR_LDMC<-get_posts_noTRY_grasses(Species_LDMC_ELTR)
-posts_HEAN_LDMC<-get_posts_noTRY(Species_LDMC_HEAN)
-posts_HECO_LDMC<-get_posts_noTRY_grasses(Species_LDMC_HECO)
-posts_PLPA_LDMC<-get_posts_noTRY(Species_LDMC_PLPA)
-posts_PAMU_LDMC<-get_posts_noTRY(Species_LDMC_PAMU)
-posts_VUOC_LDMC<-get_posts_noTRY_grasses(Species_LDMC_VUOC)
-posts_MACA_LDMC<-get_posts_noTRY(Species_LDMC_MACA)
-posts_MUPO_LDMC<-get_posts_noTRY_grasses(Species_LDMC_MUPO)
-posts_HEVI_LDMC<-get_posts_noTRY(Species_LDMC_HEVI)
-
-posts_ACMI_RDMC<-get_posts_noTRY_grasses(Species_RDMC_ACMI)
-posts_ARTR_RDMC<-get_posts_noTRY_grasses(Species_RDMC_ARTR)
-posts_ELTR_RDMC<-get_posts_noTRY_grasses(Species_RDMC_ELTR)
-posts_HEAN_RDMC<-get_posts_noTRY_grasses(Species_RDMC_HEAN)
-posts_HECO_RDMC<-get_posts_noTRY_grasses(Species_RDMC_HECO)
-posts_PLPA_RDMC<-get_posts_noTRY_grasses(Species_RDMC_PLPA)
-posts_PAMU_RDMC<-get_posts_noTRY_grasses(Species_RDMC_PAMU)
-posts_VUOC_RDMC<-get_posts_noTRY_grasses(Species_RDMC_VUOC)
-posts_MACA_RDMC<-get_posts_noTRY_grasses(Species_RDMC_MACA)
-posts_MUPO_RDMC<-get_posts_noTRY_grasses(Species_RDMC_MUPO)
-posts_HEVI_RDMC<-get_posts_noTRY_grasses(Species_RDMC_HEVI)
-
-posts_ACMI_RTD<-get_posts_noTRY_grasses(Species_RTD_ACMI)
-posts_ARTR_RTD<-get_posts_noTRY_grasses(Species_RTD_ARTR)
-posts_ELTR_RTD<-get_posts_noTRY_grasses(Species_RTD_ELTR)
-posts_HEAN_RTD<-get_posts_noTRY_grasses(Species_RTD_HEAN)
-posts_HECO_RTD<-get_posts_noTRY_grasses(Species_RTD_HECO)
-posts_PLPA_RTD<-get_posts_noTRY_grasses(Species_RTD_PLPA)
-posts_PAMU_RTD<-get_posts_noTRY_grasses(Species_RTD_PAMU)
-posts_VUOC_RTD<-get_posts_noTRY_grasses(Species_RTD_VUOC)
-posts_MACA_RTD<-get_posts_noTRY_grasses(Species_RTD_MACA)
-posts_MUPO_RTD<-get_posts_noTRY_grasses(Species_RTD_MUPO)
-posts_HEVI_RTD<-get_posts_noTRY_grasses(Species_RTD_HEVI)
-
-posts_ACMI_SRL<-get_posts_noTRY_grasses(Species_SRL_ACMI)
-posts_ARTR_SRL<-get_posts_noTRY_grasses(Species_SRL_ARTR)
-posts_ELTR_SRL<-get_posts_noTRY_grasses(Species_SRL_ELTR)
-posts_HEAN_SRL<-get_posts_noTRY_grasses(Species_SRL_HEAN)
-posts_HECO_SRL<-get_posts_noTRY_grasses(Species_SRL_HECO)
-posts_PLPA_SRL<-get_posts_noTRY_grasses(Species_SRL_PLPA)
-posts_PAMU_SRL<-get_posts_noTRY_grasses(Species_SRL_PAMU)
-posts_VUOC_SRL<-get_posts_noTRY_grasses(Species_SRL_VUOC)
-posts_MACA_SRL<-get_posts_noTRY_grasses(Species_SRL_MACA)
-posts_MUPO_SRL<-get_posts_noTRY_grasses(Species_SRL_MUPO)
-posts_HEVI_SRL<-get_posts_noTRY_grasses(Species_SRL_HEVI)
-
-
+# Why dont these keep their name?
+posts_LDMC_grasses<-lapply(list(LDMC_Species_Ind_mod_out$ELTR,LDMC_Species_Ind_mod_out$HECO, LDMC_Species_Ind_mod_out$MUPO, LDMC_Species_Ind_mod_out$VUOC),  get_posts_noTRY_grasses)
+posts_LDMC_forbs<-lapply(list(LDMC_Species_Ind_mod_out$ACMI, LDMC_Species_Ind_mod_out$ARTR, LDMC_Species_Ind_mod_out$HEAN,
+                           LDMC_Species_Ind_mod_out$HEVI, LDMC_Species_Ind_mod_out$HEVI, LDMC_Species_Ind_mod_out$MACA,
+                           LDMC_Species_Ind_mod_out$PAMU, LDMC_Species_Ind_mod_out$PLPA), get_posts_noTRY)
+posts_RDMC<-lapply(RDMC_Species_Ind_mod_out, get_posts_noTRY_grasses)
+posts_RMR<-lapply(RMR_Species_Ind_mod_out, get_posts_noTRY_grasses)
+posts_RTD<-lapply(RTD_Species_Ind_mod_out, get_posts_noTRY_grasses)
+posts_SRL<-lapply(SRL_Species_Ind_mod_out, get_posts_noTRY_grasses)
 
 # - Plotting 
 
@@ -342,18 +140,19 @@ SLA_plot_MACA<-density_plot(posts_MACA, c(-10, 110), c(0,5.5), "Days", "") + ann
 SLA_plot_HEVI<-density_plot(posts_HEVI, c(-10, 110), c(0,5.5), "Days", "") + annotate("text", x = 90, y = 11, label = "HEVI (AF)", size = 4)
 SLA_plot_MUPO<-density_plot(posts_MUPO, c(-10, 150), c(0,3.5), "Days", "") + annotate("text", x = 90, y = 11, label = "MUPO (G)", size = 4)
 
-RMR_plot_ACMI<-density_plot(posts_ACMI_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ACMI (F)", size = 4)
-RMR_plot_ARTR<-density_plot(posts_ARTR_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ARTR (S)", size = 4)
-RMR_plot_ELTR<-density_plot(posts_ELTR_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ELTR (G)", size = 4)
-RMR_plot_HEAN<-density_plot(posts_HEAN_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEAN (AF)", size = 4)
-RMR_plot_HECO<-density_plot(posts_HECO_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HECO (G)", size = 4)
-RMR_plot_PAMU<-density_plot(posts_PAMU_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PAMU (F)", size = 4)
-RMR_plot_PLPA<-density_plot(posts_PLPA_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PLPA (AF)", size = 4)
-RMR_plot_VUOC<-density_plot(posts_VUOC_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "VUOC (AG)", size = 4)
-RMR_plot_MACA<-density_plot(posts_MACA_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MACA (BF)", size = 4)
-RMR_plot_HEVI<-density_plot(posts_HEVI_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEVI (F)", size = 4)
-RMR_plot_MUPO<-density_plot(posts_MUPO_RMR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MUPO (G)", size = 4)
+RMR_plot_ACMI<-density_plot(posts_RMR$ACMI, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ACMI (F)", size = 4)
+RMR_plot_ARTR<-density_plot(posts_RMR$ARTR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ARTR (S)", size = 4)
+RMR_plot_ELTR<-density_plot(posts_RMR$ELTR, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ELTR (G)", size = 4)
+RMR_plot_HEAN<-density_plot(posts_RMR$HEAN, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEAN (AF)", size = 4)
+RMR_plot_HECO<-density_plot(posts_RMR$HECO, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HECO (G)", size = 4)
+RMR_plot_PAMU<-density_plot(posts_RMR$PAMU, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PAMU (F)", size = 4)
+RMR_plot_PLPA<-density_plot(posts_RMR$PLPA, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PLPA (AF)", size = 4)
+RMR_plot_VUOC<-density_plot(posts_RMR$VUOC, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "VUOC (AG)", size = 4)
+RMR_plot_MACA<-density_plot(posts_RMR$MACA, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MACA (BF)", size = 4)
+RMR_plot_HEVI<-density_plot(posts_RMR$HEVI, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEVI (F)", size = 4)
+RMR_plot_MUPO<-density_plot(posts_RMR$MUPO, c(-10, 75), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MUPO (G)", size = 4)
 
+# LDMC from different functions - how to pull them out? 
 LDMC_plot_ACMI<-density_plot(posts_ACMI_LDMC, c(-10, 50), c(0,5.5), "", "") + annotate("text", x = 0, y = 12, label = "ACMI (F)", size = 4)
 LDMC_plot_ARTR<-density_plot(posts_ARTR_LDMC, c(-10, 50), c(0,5.5), "", "") + annotate("text", x = 0, y = 12, label = "ARTR (S)", size = 4)
 LDMC_plot_ELTR<-density_plot(posts_ELTR_LDMC, c(-10, 50), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ELTR (G)", size = 4)
@@ -366,43 +165,41 @@ LDMC_plot_MACA<-density_plot(posts_MACA_LDMC, c(-10, 50), c(0,5.5), "", "") + an
 LDMC_plot_HEVI<-density_plot(posts_HEVI_LDMC, c(-10, 50), c(0,5.5), "", "") + annotate("text", x = 0, y = 12, label = "HEVI (F)", size = 4)
 LDMC_plot_MUPO<-density_plot(posts_MUPO_LDMC, c(-10, 50), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MUPO (G)", size = 4)
 
-RDMC_plot_ACMI<-density_plot(posts_ACMI_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ACMI (F)", size = 4)
-RDMC_plot_ARTR<-density_plot(posts_ARTR_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ARTR (S)", size = 4)
-RDMC_plot_ELTR<-density_plot(posts_ELTR_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ELTR (G)", size = 4)
-RDMC_plot_HEAN<-density_plot(posts_HEAN_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEAN (AF)", size = 4)
-RDMC_plot_HECO<-density_plot(posts_HECO_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HECO (G)", size = 4)
-RDMC_plot_PAMU<-density_plot(posts_PAMU_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PAMU (F)", size = 4)
-RDMC_plot_PLPA<-density_plot(posts_PLPA_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PLPA (AF)", size = 4)
-RDMC_plot_VUOC<-density_plot(posts_VUOC_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "VUOC (AG)", size = 4)
-RDMC_plot_MACA<-density_plot(posts_MACA_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MACA (BF)", size = 4)
-RDMC_plot_HEVI<-density_plot(posts_HEVI_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEVI (F)", size = 4)
-RDMC_plot_MUPO<-density_plot(posts_MUPO_RDMC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MUPO (G)", size = 4)
+RDMC_plot_ACMI<-density_plot(posts_RDMC$ACMI, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ACMI (F)", size = 4)
+RDMC_plot_ARTR<-density_plot(posts_RDMC$ARTR, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ARTR (S)", size = 4)
+RDMC_plot_ELTR<-density_plot(posts_RDMC$ELTR, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "ELTR (G)", size = 4)
+RDMC_plot_HEAN<-density_plot(posts_RDMC$HEAN, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEAN (AF)", size = 4)
+RDMC_plot_HECO<-density_plot(posts_RDMC$HECO, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HECO (G)", size = 4)
+RDMC_plot_PAMU<-density_plot(posts_RDMC$PAMU, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PAMU (F)", size = 4)
+RDMC_plot_PLPA<-density_plot(posts_RDMC$PLPA, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "PLPA (AF)", size = 4)
+RDMC_plot_VUOC<-density_plot(posts_RDMC$VUOC, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "VUOC (AG)", size = 4)
+RDMC_plot_MACA<-density_plot(posts_RDMC$MACA, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MACA (BF)", size = 4)
+RDMC_plot_HEVI<-density_plot(posts_RDMC$HEVI, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "HEVI (F)", size = 4)
+RDMC_plot_MUPO<-density_plot(posts_RDMC$MUPO, c(-10, 40), c(0,3.5), "", "") + annotate("text", x = 0, y = 12, label = "MUPO (G)", size = 4)
 
-RTD_plot_ACMI<-density_plot(posts_ACMI_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ACMI (F)", size = 4)
-RTD_plot_ARTR<-density_plot(posts_ARTR_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ARTR (S)", size = 4)
-RTD_plot_ELTR<-density_plot(posts_ELTR_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ELTR (G)", size = 4)
-RTD_plot_HEAN<-density_plot(posts_HEAN_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HEAN (AF)", size = 4)
-RTD_plot_HECO<-density_plot(posts_HECO_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HECO (G)", size = 4)
-RTD_plot_PAMU<-density_plot(posts_PAMU_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "PAMU (F)", size = 4)
-RTD_plot_PLPA<-density_plot(posts_PLPA_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "PLPA (AF)", size = 4)
-RTD_plot_VUOC<-density_plot(posts_VUOC_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "VUOC (AG)", size = 4)
-RTD_plot_MACA<-density_plot(posts_MACA_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "MACA (BF)", size = 4)
-RTD_plot_HEVI<-density_plot(posts_HEVI_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HEVI (F)", size = 4)
-RTD_plot_MUPO<-density_plot(posts_MUPO_RTD, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "MUPO (G)", size = 4)
+RTD_plot_ACMI<-density_plot(posts_RTD$ACMI, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ACMI (F)", size = 4)
+RTD_plot_ARTR<-density_plot(posts_RTD$ARTR, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ARTR (S)", size = 4)
+RTD_plot_ELTR<-density_plot(posts_RTD$ELTR, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "ELTR (G)", size = 4)
+RTD_plot_HEAN<-density_plot(posts_RTD$HEAN, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HEAN (AF)", size = 4)
+RTD_plot_HECO<-density_plot(posts_RTD$HECO, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HECO (G)", size = 4)
+RTD_plot_PAMU<-density_plot(posts_RTD$PAMU, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "PAMU (F)", size = 4)
+RTD_plot_PLPA<-density_plot(posts_RTD$PLPA, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "PLPA (AF)", size = 4)
+RTD_plot_VUOC<-density_plot(posts_RTD$VUOC, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "VUOC (AG)", size = 4)
+RTD_plot_MACA<-density_plot(posts_RTD$MACA, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "MACA (BF)", size = 4)
+RTD_plot_HEVI<-density_plot(posts_RTD$HEVI, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "HEVI (F)", size = 4)
+RTD_plot_MUPO<-density_plot(posts_RTD$MUPO, c(-10, 32), c(0,3.5), "", "") + annotate("text", x = -5, y = 12, label = "MUPO (G)", size = 4)
 
-SRL_plot_ACMI<-density_plot(posts_ACMI_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ACMI (F)", size = 4)
-SRL_plot_ARTR<-density_plot(posts_ARTR_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ARTR (S)", size = 4)
-SRL_plot_ELTR<-density_plot(posts_ELTR_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ELTR (G)", size = 4)
-SRL_plot_HEAN<-density_plot(posts_HEAN_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HEAN (AF)", size = 4)
-SRL_plot_HECO<-density_plot(posts_HECO_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HECO (G)", size = 4)
-SRL_plot_PAMU<-density_plot(posts_PAMU_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "PAMU (F)", size = 4)
-SRL_plot_PLPA<-density_plot(posts_PLPA_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "PLPA (AF)", size = 4)
-SRL_plot_VUOC<-density_plot(posts_VUOC_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "VUOC (AG)", size = 4)
-SRL_plot_MACA<-density_plot(posts_MACA_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "MACA (BF)", size = 4)
-SRL_plot_HEVI<-density_plot(posts_HEVI_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HEVI (F)", size = 4)
-SRL_plot_MUPO<-density_plot(posts_MUPO_SRL, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "MUPO (G)", size = 4)
-
-
+SRL_plot_ACMI<-density_plot(posts_SRL$ACMI, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ACMI (F)", size = 4)
+SRL_plot_ARTR<-density_plot(posts_SRL$ARTR, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ARTR (S)", size = 4)
+SRL_plot_ELTR<-density_plot(posts_SRL$ELTR, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "ELTR (G)", size = 4)
+SRL_plot_HEAN<-density_plot(posts_SRL$HEAN, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HEAN (AF)", size = 4)
+SRL_plot_HECO<-density_plot(posts_SRL$HECO, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HECO (G)", size = 4)
+SRL_plot_PAMU<-density_plot(posts_SRL$PAMU, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "PAMU (F)", size = 4)
+SRL_plot_PLPA<-density_plot(posts_SRL$PLPA, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "PLPA (AF)", size = 4)
+SRL_plot_VUOC<-density_plot(posts_SRL$VUOC, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "VUOC (AG)", size = 4)
+SRL_plot_MACA<-density_plot(posts_SRL$MACA, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "MACA (BF)", size = 4)
+SRL_plot_HEVI<-density_plot(posts_SRL$HEVI, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "HEVI (F)", size = 4)
+SRL_plot_MUPO<-density_plot(posts_SRL$MUPO, c(-25, 110), c(0,3.5), "", "") + annotate("text", x = -10, y=13, label = "MUPO (G)", size = 4)
 
 
 pdf("Output/Figures/Density_SLA_TRY.pdf", height = 8, width = 12)
