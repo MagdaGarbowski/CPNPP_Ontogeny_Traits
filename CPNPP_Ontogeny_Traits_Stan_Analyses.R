@@ -1,4 +1,7 @@
-setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
+
+if(Sys.info()["login"] == "MagdaGarbowski")
+    setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
+
 SpeciesData<-read.csv("Data_Generated/TraitData_2017.csv")
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 file.exists("stan_models/IndividualTraitbySpecies.stan")
@@ -20,8 +23,10 @@ mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 
 # ----------------------------- Run SLA models one by one to see if they are working. Divergent transitions for most -------------------------------------------------------
 
-SLA_mods_function<-function(df){
-  stan(file = "stan_models/IndividualTraitbySpecies.stan", df, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) # Not working... 
+SLA_mods_function <- function(df,
+                              mod_file = "stan_models/IndividualTraitbySpecies.stan"){
+    mod = stan_model(mod_file)
+    sampling(mod, df, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) # Not working... 
 }
 
 SLA_mods_function(mk_data_SLA$ACMI)
