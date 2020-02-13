@@ -29,7 +29,26 @@ SLA_mods_function <- function(df,
     sampling(mod, df, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) # Not working... 
 }
 
+# This is a better way to write this function
+SLA_mods_function <- function(df,
+                              mod_file = "stan_models/IndividualTraitbySpecies.stan",
+                              iter = 1000,
+                              cores = 2,
+                              mod = stan_model(mod_file), ...){
+
+    sampling(mod, df, iter = iter, cores = cores, ...) 
+}
+
 SLA_mods_function(mk_data_SLA$ACMI)
+
+# Why is the second function better? Because it makes many of the
+# parameters user-changeable, you can do things like this
+
+# precompile the model once
+mod = stan_model("stan_models/IndividualTraitbySpecies.stan")
+
+# then use that model for every element in the list
+all_models = lapply(mk_data_SLA, SLA_mods_function, mod = mod)
 
 # -----------------------------------------------
 
