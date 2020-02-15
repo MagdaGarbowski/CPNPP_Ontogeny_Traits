@@ -13,3 +13,15 @@ mk_data_function = function(df, y_var){
                  p = as.integer(as.factor(as.character(df$POP_ID))))
   mk_dat
 }
+
+mk_data_traitvar_function = function(df){
+  mk_dat = list (mu1 = 0,
+                 sigma1 = 1, 
+                 mu2 = 0, 
+                 sigma2 = 1, 
+                 N = nrow(df), 
+                 K = nlevels(as.factor(df$trait)), 
+                 y = df$value, 
+                 P = as.integer(as.factor(as.character(df$trait))))
+  mk_dat
+}
