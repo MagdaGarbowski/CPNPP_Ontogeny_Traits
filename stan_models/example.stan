@@ -1,24 +1,34 @@
 data{
+  real mu1; // mu  y 
+  real sigma1; // sigma y 
+  real mu2; // mu var
+  real sigma2; // sigma var
   int N; // number of observations
-  int K; // number of groups in x (H_num)
-  int x[N]; // observations at each x
-  vector[N] y; // data points - MATT - would vector y[N] be the same? 
-  int J; // number of populations
-  int <lower = 1, upper = J> p[N]; // population ID 
+  int K; // number of traits
+  int P[N]; // Trait ID
+  vector [N] y; //datapoints
 }
 
 parameters{
-  vector<lower = 0> [K] betas; // intercept and slope for H_num 
-  real<lower = 0> sigma; // error sd 
-  vector[J] u; // POP_ID intercepts
-  real<lower = 0> sigma_u; // POP_ID sd
+  vector[K] mu;
+  vector<lower = 0>[K] sigma;
 }
 
 model{
-  /* Same as below - just not vectorized
-	 for(n in 1:N)
-	     y[n] ~ normal(betas[x[n]], sigma);
-  */
-  u ~ normal (0, sigma_u); // random effect POP_ID
-  y ~ normal(betas[x] + u[p], sigma);
+  mu ~ normal(mu1, sigma1);
+  sigma ~ normal(mu2, sigma2);
+  y ~ normal(mu[P], sigma[P]);
 }
+
+generated quantities{
+  vector[K] mu_out;
+  vector[K] sigma_out;
+  vector[K] cv; 
+  for(i in 1:K){
+  mu_out[i] = mu[i];
+  sigma_out[i] = sigma[i];
+	cv[i] = sigma_out[i]/ mu_out[i];
+  }
+  
+}
+
