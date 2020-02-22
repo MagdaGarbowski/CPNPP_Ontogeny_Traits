@@ -55,17 +55,17 @@ all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effect
 
 # -------------------------------- Plotting ------------------------------# 
 
-out_names_full<-c("overall_mean", "ARTR_H1","ELTR_H1", "HEAN_H1","HECO_H1","HEVI_H1","MACA_H1","MUPO_H1","PAMU_H1","PLPA_H1","VUOC_H1",
-                  "ACMI_H2","ARTR_H2","ELTR_H2", "HEAN_H2","HECO_H2","HEVI_H2","MACA_H2","MUPO_H2","PAMU_H2","PLPA_H2","VUOC_H2",
-                  "ACMI_H3","ARTR_H3","ELTR_H3", "HEAN_H3","HECO_H3","HEVI_H3","MACA_H3","MUPO_H3","PAMU_H3","PLPA_H3","VUOC_H3",
-                  "ACMI_H4","ARTR_H4","ELTR_H4", "HEAN_H4","HECO_H4","HEVI_H4","MACA_H4","MUPO_H4","PAMU_H4","PLPA_H4","VUOC_H4")
-
-out_names_noH1<-c("overall_mean","ARTR_H2","ELTR_H2", "HEAN_H2","HECO_H2","HEVI_H2","MACA_H2","MUPO_H2","PAMU_H2","PLPA_H2","VUOC_H2",
-                  "ACMI_H2", "ARTR_H3","ELTR_H3", "HEAN_H3","HECO_H3","HEVI_H3","MACA_H3","MUPO_H3","PAMU_H3","PLPA_H3","VUOC_H3",
-                  "ACMI_H3", "ARTR_H4","ELTR_H4", "HEAN_H4","HECO_H4","HEVI_H4","MACA_H4","MUPO_H4","PAMU_H4","PLPA_H4","VUOC_H4")
+out_names_full<-colnames(mk_data_full$RDMC$M)
+out_names_noH1<-colnames(mk_data_noH1$SLA$M)
 
 names(all_mods_noH1$SLA)[grep("beta",names(all_mods_noH1$SLA))]<-out_names_noH1
 plot(all_mods_noH1$SLA, pars = "beta")
+
+names(all_mods_noH1$LDMC)[grep("beta",names(all_mods_noH1$LDMC))]<-out_names_noH1
+plot(all_mods_noH1$LDMC, pars = "beta")
+
+names(all_mods_full$RDMC)[grep("beta",names(all_mods_full$RDMC))]<-out_names_full
+plot(all_mods_full$RDMC, pars = "beta")
 
 #
 #
