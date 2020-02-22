@@ -21,7 +21,29 @@ mk_data_traitvar_function = function(df){
                  sigma2 = 1, 
                  N = nrow(df), 
                  K = nlevels(as.factor(df$trait)), 
+                 J = nlevels(as.factor(as.character(df$SPECIES))),
                  y = df$value, 
-                 P = as.integer(as.factor(as.character(df$trait))))
+                 P = as.integer(as.factor(as.character(df$trait))),
+                 s = as.integer(as.factor(as.character(df$SPECIES))))
   mk_dat
 }
+
+mk_data_all_function = function(df){
+  mk_dat = list(N = nrow(df), 
+                K = nlevels(as.factor(df$H_num)), 
+                x = as.integer(as.factor(as.character(df$H_num))), 
+                S = nlevels(as.factor(df$SPECIES)),
+                s = as.integer(as.factor(as.character(df$SPECIES))),
+                y = df$value, 
+                J = nlevels(as.factor(as.character(df$POP_ID))), 
+                p = as.integer(as.factor(as.character(df$POP_ID))))
+}
+
+make_matrix_function<-function(df){
+  mat_dat = list(
+    M = model.matrix(~SPECIES * H_num, df),
+    y = df$value,
+    n = nrow (model.matrix(~SPECIES * H_num, df)),
+    s = ncol (model.matrix(~SPECIES * H_num, df)))
+}
+  

@@ -7,25 +7,92 @@ TraitData_Pop_Avg_2017<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
 
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
+library(bayesplot)
 
 SpeciesData$H_num<-as.character(as.factor(SpeciesData$H_num))
 SpeciesData$SLA<-ifelse((SpeciesData$GrowthForm %in% c("FORB","SHRUB") & SpeciesData$H_num == "H1"), NA, SpeciesData$SLA) # Add NA for H1 SLA for forb species 
 SpeciesData$SLA<-ifelse((SpeciesData$SLA == 0), NA, SpeciesData$SLA)
 Species_splits = split(SpeciesData, paste(SpeciesData$SPECIES))
 
-
 TraitData_Pop_Avg_2017$H_num<-as.character(as.factor(TraitData_Pop_Avg_2017$H_num))
 TraitData_Pop_Avg_2017$value<-ifelse((TraitData_Pop_Avg_2017$GrowthForm %in% c("FORB","SHRUB", "GRASS") & TraitData_Pop_Avg_2017$H_num == "H1" & TraitData_Pop_Avg_2017$trait %in% c("SLA", "LDMC")), NA, TraitData_Pop_Avg_2017$value)
+
+# Data for variance estimates of traits
 na.omit_traits<-na.omit.fun(TraitData_Pop_Avg_2017, c("POP_ID", "value","trait","SPECIES"))
 traits_stan_df<-mk_data_traitvar_function(na.omit_traits)
 
+# Data for full model - mean estimates of traits by species and time 
+na.omit_species<-na.omit.fun(TraitData_Pop_Avg_2017, c("POP_ID", "value","trait","SPECIES", "H_num"))
+Trait_splits = split(na.omit_species, paste(na.omit_species$trait))
+Trait_splits_allH<-list(Trait_splits$RDMC, Trait_splits$RMR, Trait_splits$RTD,Trait_splits$SRL) # not working 
+Trait_splits_noH1<-list(Trait_splits$LDMC, Trait_splits$SLA) # not working 
+
+mk_data_full<-lapply(Trait_splits, make_matrix_function) # matrix - will need to add pop_id random effect
+
+# Data for running individual models by Species and trait 
 dat_na.omit_SLA<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","SLA"))
 mk_data_SLA<-lapply(dat_na.omit_SLA, mk_data_function, "SLA")
 
 dat_na.omit_RMR<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","RMR"))
 mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 
+# --------------------------------- Full model (Species and H_num together) --------------------------------------#
+mod = stan_model("stan_models/All_TraitsbySpecies_matrix.stan")
+  
+mods_function_full <- function(df,
+                          mod_file = "stan_models/All_TraitsbySpecies_matrix.stan",
+                          iter = 1000,
+                          cores = 2,
+                          mod = stan_model(mod_file), ...){
+  
+  sampling(mod, df, iter = iter, cores = cores, ...) 
+}
+
+all_mods_full = lapply(mk_data_full, mods_function_full, mod = mod)
+
+
+# -------------------------------- Plotting ------------------------------# 
+
+out_names<-c("mean", "ACMI_H2", "ACMI_H3","ACMI_H4",
+             "ARTR_H1", "ARTR_H2", "ARTR_H3","ARTR_H4",
+             "ELTR_H1", "ELTR_H2", "ELTR_H3","ELTR_H4",
+             "HEAN_H1", "HEAN_H2", "HEAN_H3","HEAN_H4",
+             "HECO_H1", "HECO_H2", "HECO_H3","HECO_H4",
+             "HEVI_H1", "HEVI_H2", "HEVI_H3","HEVI_H4",
+             "MACA_H1", "MACA_H2", "MACA_H3","MACA_H4",
+             "MUPO_H1", "MUPO_H2", "MUPO_H3","MUPO_H4",
+             "PAMU_H1", "PAMU_H2", "PAMU_H3","PAMU_H4",
+             "PLPA_H1", "PLPA_H2", "PLPA_H3","PLPA_H4",
+             "VUOC_H1", "VOUC_H2", "VUOC_H3","VUOC_H4")
+
+names_function<-function(df){
+  names(df)[grep("beta",names(df))]<-out_names
+}
+
+all_mods_full_names<-lapply(all_mods_full, names_function)
+
+
+names(fit_all_RDMC)[grep("beta",names(fit_all_RDMC))]<-out_names
+print(fit_all_RDMC, digits = 2)  
+plot(fit_all_RDMC, pars = "beta")
+
+
+
+#
+#
+#
+#
+#
+#
+#
+#
+#
 # ------------------------------------------------------------- Variance model----------------------------------------------------------------------------
+# Questions: Which traits are most variable through time and does this depend on GrowthForm?
+# To "match" y ~ H_num + GrowthForm + H_num * GrowthForm + (1|POP_ID) I want: 
+# CV ~ GrowthForm + (1|POP_ID) - H_num within a POP_ID is what the CV is calculated from 
+# CV for every trait x POP_ID? 
+
 fit_trait_var<- stan(file = "stan_models/example.stan", data = traits_stan_df, warmup = 500, iter = 2000, chains = 4, cores = 2, control = list(adapt_delta = 0.90))  
 
 summary(fit_trait_var)$summary
@@ -59,6 +126,8 @@ all_RMR_models = lapply(mk_data_RMR, mods_function, mod = mod, warmup = 800, opt
 
 summary(all_SLA_models$ACMI)$summary
 summary(all_RMR_models$ACMI)$summary
+summary(all_RMR_models$ELTR)$summary
+
 
 summary(fit_SLA_ARTR) 
 
