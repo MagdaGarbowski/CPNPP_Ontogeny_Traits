@@ -1,4 +1,3 @@
-
 if(Sys.info()["login"] == "MagdaGarbowski")
     setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
 
@@ -23,11 +22,14 @@ traits_stan_df<-mk_data_traitvar_function(na.omit_traits)
 
 # Data for full model - mean estimates of traits by species and time 
 na.omit_species<-na.omit.fun(TraitData_Pop_Avg_2017, c("POP_ID", "value","trait","SPECIES", "H_num"))
-Trait_splits = split(na.omit_species, paste(na.omit_species$trait))
-Trait_splits_allH<-list(Trait_splits$RDMC, Trait_splits$RMR, Trait_splits$RTD,Trait_splits$SRL) # not working 
-Trait_splits_noH1<-list(Trait_splits$LDMC, Trait_splits$SLA) # not working 
+Traits_all<-na.omit_species[na.omit_species$trait %in% c ("RDMC","RLD","RMR","SRL"),]
+Traits_leaf<-na.omit_species[na.omit_species$trait %in% c ("SLA","LDMC"),]
 
-mk_data_full<-lapply(Trait_splits, make_matrix_function) # matrix - will need to add pop_id random effect
+Trait_splits_full = split(Traits_all, paste(Traits_all$trait))
+Trait_splits_noH1<-split(Traits_leaf, paste(Traits_leaf$trait))
+
+mk_data_full<-lapply(Trait_splits_full, make_matrix_function) # matrix - will need to add pop_id random effect
+mk_data_noH1<-lapply(Trait_splits_noH1, make_matrix_function) 
 
 # Data for running individual models by Species and trait 
 dat_na.omit_SLA<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","SLA"))
@@ -39,7 +41,7 @@ mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 # --------------------------------- Full model (Species and H_num together) --------------------------------------#
 mod = stan_model("stan_models/All_TraitsbySpecies_matrix.stan")
   
-mods_function_full <- function(df,
+mods_function_all <- function(df,
                           mod_file = "stan_models/All_TraitsbySpecies_matrix.stan",
                           iter = 1000,
                           cores = 2,
@@ -48,35 +50,22 @@ mods_function_full <- function(df,
   sampling(mod, df, iter = iter, cores = cores, ...) 
 }
 
-all_mods_full = lapply(mk_data_full, mods_function_full, mod = mod)
-
+all_mods_full = lapply(mk_data_full, mods_function_all, mod = mod)
+all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effective sample size too low 
 
 # -------------------------------- Plotting ------------------------------# 
 
-out_names<-c("mean", "ACMI_H2", "ACMI_H3","ACMI_H4",
-             "ARTR_H1", "ARTR_H2", "ARTR_H3","ARTR_H4",
-             "ELTR_H1", "ELTR_H2", "ELTR_H3","ELTR_H4",
-             "HEAN_H1", "HEAN_H2", "HEAN_H3","HEAN_H4",
-             "HECO_H1", "HECO_H2", "HECO_H3","HECO_H4",
-             "HEVI_H1", "HEVI_H2", "HEVI_H3","HEVI_H4",
-             "MACA_H1", "MACA_H2", "MACA_H3","MACA_H4",
-             "MUPO_H1", "MUPO_H2", "MUPO_H3","MUPO_H4",
-             "PAMU_H1", "PAMU_H2", "PAMU_H3","PAMU_H4",
-             "PLPA_H1", "PLPA_H2", "PLPA_H3","PLPA_H4",
-             "VUOC_H1", "VOUC_H2", "VUOC_H3","VUOC_H4")
+out_names_full<-c("overall_mean", "ARTR_H1","ELTR_H1", "HEAN_H1","HECO_H1","HEVI_H1","MACA_H1","MUPO_H1","PAMU_H1","PLPA_H1","VUOC_H1",
+                  "ACMI_H2","ARTR_H2","ELTR_H2", "HEAN_H2","HECO_H2","HEVI_H2","MACA_H2","MUPO_H2","PAMU_H2","PLPA_H2","VUOC_H2",
+                  "ACMI_H3","ARTR_H3","ELTR_H3", "HEAN_H3","HECO_H3","HEVI_H3","MACA_H3","MUPO_H3","PAMU_H3","PLPA_H3","VUOC_H3",
+                  "ACMI_H4","ARTR_H4","ELTR_H4", "HEAN_H4","HECO_H4","HEVI_H4","MACA_H4","MUPO_H4","PAMU_H4","PLPA_H4","VUOC_H4")
 
-names_function<-function(df){
-  names(df)[grep("beta",names(df))]<-out_names
-}
+out_names_noH1<-c("overall_mean","ARTR_H2","ELTR_H2", "HEAN_H2","HECO_H2","HEVI_H2","MACA_H2","MUPO_H2","PAMU_H2","PLPA_H2","VUOC_H2",
+                  "ACMI_H2", "ARTR_H3","ELTR_H3", "HEAN_H3","HECO_H3","HEVI_H3","MACA_H3","MUPO_H3","PAMU_H3","PLPA_H3","VUOC_H3",
+                  "ACMI_H3", "ARTR_H4","ELTR_H4", "HEAN_H4","HECO_H4","HEVI_H4","MACA_H4","MUPO_H4","PAMU_H4","PLPA_H4","VUOC_H4")
 
-all_mods_full_names<-lapply(all_mods_full, names_function)
-
-
-names(fit_all_RDMC)[grep("beta",names(fit_all_RDMC))]<-out_names
-print(fit_all_RDMC, digits = 2)  
-plot(fit_all_RDMC, pars = "beta")
-
-
+names(all_mods_noH1$SLA)[grep("beta",names(all_mods_noH1$SLA))]<-out_names_noH1
+plot(all_mods_noH1$SLA, pars = "beta")
 
 #
 #
