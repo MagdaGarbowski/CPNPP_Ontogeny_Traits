@@ -56,12 +56,15 @@ prep_data = function(df){
     Hnum = to_index(df$H_num)
     sp = to_index(df$SPECIES)
     pop = to_index(df$POP_ID)
+    sp_Hnum = to_index(paste(df$SPECIES, df$H_num))
     list(N = nrow(df),
          n_Hnum = max(Hnum),
          n_sp = max(sp),
          n_pop = max(pop),
+         n_sp_Hnum = max(sp_Hnum),
          Hnum = Hnum,
          sp = sp,
          pop = pop,
+         sp_Hnum = sp_Hnum,
          y = df$value)
 }
