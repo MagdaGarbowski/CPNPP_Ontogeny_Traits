@@ -40,9 +40,13 @@ mk_data_SLA<-lapply(dat_na.omit_SLA, mk_data_function, "SLA")
 dat_na.omit_RMR<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","RMR"))
 mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 
+################################################################################
+data_full<-lapply(Trait_splits_full, prep_data) # matrix - will need to add po
+
+
 # --------------------------------- Full model (Species and H_num together) --------------------------------------#
 # Will still need to add random effect of population 
-mod = stan_model("stan_models/All_TraitsbySpecies_matrix.stan")
+mod = stan_model("stan_models/All_Traits_Random_Effects.stan")
   
 mods_function_all <- function(df,
                           mod_file = "stan_models/All_TraitsbySpecies_matrix.stan",
@@ -53,7 +57,17 @@ mods_function_all <- function(df,
   sampling(mod, df, iter = iter, cores = cores, ...) 
 }
 
-all_mods_full = lapply(mk_data_full, mods_function_all, mod = mod) # Bulk effective sample size too low 
+## all_mods_full = lapply(data_full, mods_function_all, mod = mod) # Bulk effective sample size too low 
+
+# The new model does not sample as efficiently as the matrix
+# representation, so higher adapt delta and iterations are needed
+all_mods_full = lapply(data_full, mods_function_all, mod = mod,
+                       pars = c("beta_Hnum_raw", "beta_sp_raw",
+                                "beta_pop_raw", "beta_sp_Hnum_raw"),
+                       include = FALSE,
+                       warmup = 1000, iter = 1500,
+                       control = list(adapt_delta = 0.95)) # Exclude the "raw" versions of betas
+
 all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effective sample size too low 
 
 #------------------------------- Contrasts -------------------------------# 
