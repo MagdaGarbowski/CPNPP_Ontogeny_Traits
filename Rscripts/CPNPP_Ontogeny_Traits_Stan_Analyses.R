@@ -80,10 +80,33 @@ ggplot(comps_Sps_H1, aes(y = estimate, x = term)) +
 dat_raw_plotted<-boxplot(value ~ SPECIES, data = Trait_splits_full$RMR[Trait_splits_full$RMR$H_num == "H1",])
 
 # Questions for Matt: 
-# (1) Am I doing this right? 
-# (2) Interpretation: If for a given comparison the CI does not intersect 0, the two are different. 
+# (1) Am I doing this right?
+
+# No - not really. The general idea is correct, but:
+# (this is way easier for me if you tell me where you get this code/ideas)
+
+#     1. This does not correct for multiple comparisons - the "Tukey"
+#     matrix above does not actually apply the correction, just builds
+#     a matrix for calculating the comparisons.
+
+#     2. The creation of "pairwise.mat_Sps_H1 is confusing to me - I
+#     do not think this results in the correct prediction
+#     matrix. Typically, we use just the contrasts.
+
+
+
+# (2) Interpretation: If for a given comparison the CI does not intersect 0, the two are different.
+#    See above - you should not interpret these estimates.
+#
+#    Generally, yes - but the Bayesian interpretation is that the
+#    estimated differences do not include 0 - we try to avoid making
+#    binary statements such as "are/are not different"
+
 # (2) e.g. SPECIESVUOC is "higher" than all other species besides intercept (ACMI)? 
-# (3) Is HPD (Highest posterior density interval) appropriate to use? 
+# (3) Is HPD (Highest posterior density interval) appropriate to use?
+
+#     Yes - when the estimates are symmetric, it is roughly equivalent to
+#     the quantile method.
 
 
 #--------------------- H_num main effects----------------------------# 
@@ -91,6 +114,13 @@ dat_raw_plotted<-boxplot(value ~ SPECIES, data = Trait_splits_full$RMR[Trait_spl
 # Questions for Matt: 
 # (1) How do I pull comparisons from ALL species at each H_num for comparisons? 
 # There are 44  values (every species at every H_num) but I want to end up with 4 (i.e. "main effect" of H_num) 
+
+# You want the marginal effect of H_num, which is the effects of H_num
+# averaged over differences in the other parameters. Again, this is
+# where contrasts can make this a whole lot easier. You can build a
+# contrast for these effects. For example, to test H1 vs H2, it
+# involves setting all the "H_num = 1" effects to positive and all the
+# corresponding "H_num = 2" to negative.
 
 comp_H<-rep(1/44, 44) # Define contribution from each H_num
 coefs_comp_H<-as.matrix(mcmc_RMR)[,1:44] # All coefs should go into comparisons for H_num? 
