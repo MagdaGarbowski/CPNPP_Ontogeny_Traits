@@ -7,6 +7,8 @@ TraitData_Pop_Avg_2017<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
 library(bayesplot)
+library(multcomp)
+library(broom)
 
 SpeciesData$H_num<-as.character(as.factor(SpeciesData$H_num))
 SpeciesData$SLA<-ifelse((SpeciesData$GrowthForm %in% c("FORB","SHRUB") & SpeciesData$H_num == "H1"), NA, SpeciesData$SLA) # Add NA for H1 SLA for forb species 
@@ -39,6 +41,7 @@ dat_na.omit_RMR<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_n
 mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 
 # --------------------------------- Full model (Species and H_num together) --------------------------------------#
+# Will still need to add random effect of population 
 mod = stan_model("stan_models/All_TraitsbySpecies_matrix.stan")
   
 mods_function_all <- function(df,
@@ -50,23 +53,52 @@ mods_function_all <- function(df,
   sampling(mod, df, iter = iter, cores = cores, ...) 
 }
 
-all_mods_full = lapply(mk_data_full, mods_function_all, mod = mod)
+all_mods_full = lapply(mk_data_full, mods_function_all, mod = mod) # Bulk effective sample size too low 
 all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effective sample size too low 
 
-# -------------------------------- Plotting ------------------------------# 
+#------------------------------- Contrasts -------------------------------# 
+#--------------------- Species comparisons at Hnum_1----------------------------# 
 
-out_names_full<-colnames(mk_data_full$RDMC$M)
-out_names_noH1<-colnames(mk_data_noH1$SLA$M)
+RMR_test<-mods_function_all(mk_data_full$RMR, mod = mod) # Bulk Effective Samples Size (ESS) is too low
+mcmc_RMR = RMR_test
 
-names(all_mods_noH1$SLA)[grep("beta",names(all_mods_noH1$SLA))]<-out_names_noH1
-plot(all_mods_noH1$SLA, pars = "beta")
+Sps_comp_H1<-rep(1/11,11) #Define contribution from each species 
+coefs_Sps_H1<-as.matrix(mcmc_RMR)[,1:11] # pick coeffecients to compare 
+dat_Sps_H1<-data.frame(x = colnames(coefs_Sps_H1)) # get colnames to make Tukey matrix
+tuk.mat_Sps_H1<-contrMat(n = table(dat_Sps_H1$x), type = "Tukey") # make Tukey matrix
+Xmat_Sps_H1<-model.matrix(~x, dat_Sps_H1) 
+pairwise.mat_Sps_H1<-tuk.mat_Sps_H1 %*% t(Xmat_Sps_H1)
+comps_Sps_H1 = tidyMCMC(coefs_Sps_H1 %*% t(pairwise.mat_Sps_H1), conf.int = TRUE, conf.method = "HPDinterval") # get effect sie CI - is HPD appropriate? 
 
-names(all_mods_noH1$LDMC)[grep("beta",names(all_mods_noH1$LDMC))]<-out_names_noH1
-plot(all_mods_noH1$LDMC, pars = "beta")
+ggplot(comps_Sps_H1, aes(y = estimate, x = term)) + 
+  geom_pointrange(aes(ymin = conf.low,
+                      ymax = conf.high)) + geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_y_continuous("Effect size") + scale_x_discrete("") + coord_flip() +
+  theme_classic()
 
-names(all_mods_full$RDMC)[grep("beta",names(all_mods_full$RDMC))]<-out_names_full
-plot(all_mods_full$RDMC, pars = "beta")
+# Compare to raw_data boxplot to see if results make sense 
+dat_raw_plotted<-boxplot(value ~ SPECIES, data = Trait_splits_full$RMR[Trait_splits_full$RMR$H_num == "H1",])
 
+# Questions for Matt: 
+# (1) Am I doing this right? 
+# (2) Interpretation: If for a given comparison the CI does not intersect 0, the two are different. 
+# (2) e.g. SPECIESVUOC is "higher" than all other species besides intercept (ACMI)? 
+# (3) Is HPD (Highest posterior density interval) appropriate to use? 
+
+
+#--------------------- H_num main effects----------------------------# 
+# STUCK HERE
+# Questions for Matt: 
+# (1) How do I pull comparisons from ALL species at each H_num for comparisons? 
+# There are 44  values (every species at every H_num) but I want to end up with 4 (i.e. "main effect" of H_num) 
+
+comp_H<-rep(1/44, 44) # Define contribution from each H_num
+coefs_comp_H<-as.matrix(mcmc_RMR)[,1:44] # All coefs should go into comparisons for H_num? 
+dat_comp_H<-data.frame(x = colnames(coefs_comp_H)) # get colnames to make Tukey matrix
+Xmat_comp_H<-model.matrix(~x, dat_comp_H) 
+pairwise.mat_comp_H<-comp_H %*% t(Xmat_comp_H)
+
+comps_comp_H = tidyMCMC(coefs_comp_H %*% t(pairwise.mat_comp_H), conf.int = TRUE, conf.method = "HPDinterval") # get effect sie CI - is HPD appropriate? 
 #
 #
 #
@@ -86,101 +118,3 @@ fit_trait_var<- stan(file = "stan_models/example.stan", data = traits_stan_df, w
 
 summary(fit_trait_var)$summary
 aggregate(.~H_num, dat_na.omit_RMR$ACMI, FUN = mean)
-
-# ----------------------------- Run SLA models one by one to see if they are working. Divergent transitions for most -------------------------------------------------------
-
-mods_function <- function(df,
-                              mod_file = "stan_models/IndividualTraitbySpecies.stan",
-                              iter = 1000,
-                              cores = 2,
-                              mod = stan_model(mod_file), ...){
-
-    sampling(mod, df, iter = iter, cores = cores, ...) 
-}
-
-
-# Why is the second function better? Because it makes many of the
-# parameters user-changeable, you can do things like this
-
-# precompile the model once
-mod = stan_model("stan_models/IndividualTraitbySpecies.stan")
-
-# then use that model for every element in the list
-all_SLA_models = lapply(mk_data_SLA, mods_function, mod = mod)
-all_RMR_models = lapply(mk_data_RMR, mods_function, mod = mod, warmup = 800, options(adapt_delta = 0.9))
-
-
-
-# -----------------------------------------------
-
-summary(all_SLA_models$ACMI)$summary
-summary(all_RMR_models$ACMI)$summary
-summary(all_RMR_models$ELTR)$summary
-
-
-summary(fit_SLA_ARTR) 
-
-summary(fit_SLA_ELTR) 
-
-summary(fit_SLA_HECO) 
-
-summary(fit_SLA_HEAN) 
-
-summary(fit_SLA_HEVI) 
-
-summary(fit_SLA_MUPO) 
-
-summary(fit_SLA_MACA) 
-
-summary(fit_SLA_PAMU) 
-
-summary(fit_SLA_PLPA) 
-
-summary(fit_SLA_VUOC) 
-
-
-# ----------------------------- Run RMR models one by one to see if they are working. Divergent transitions for most -------------------------------------------------------
-
-fit_RMR_ACMI <- stan(file = "stan_models/example.stan", data = mk_data_RMR$ACMI, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99))  
-summary(fit_RMR_ACMI) 
-aggregate(.~H_num, dat_na.omit_RMR$ACMI, FUN = mean)
-
-fit_RMR_ARTR <- stan(file = "stan_models/example.stan", data = mk_data_RMR$ARTR, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_ARTR) 
-aggregate(.~H_num, dat_na.omit_RMR$ARTR, FUN = mean)
-
-fit_RMR_ELTR <- stan(file = "stan_models/example.stan", data = mk_data_RMR$ELTR, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99))  
-summary(fit_RMR_ELTR) 
-aggregate(.~H_num, dat_na.omit_RMR$ELTR, FUN = mean)
-
-fit_RMR_HECO <- stan(file = "stan_models/example.stan", data = mk_data_RMR$HECO, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_HECO) 
-aggregate(.~H_num, dat_na.omit_RMR$HECO, FUN = mean)
-
-fit_RMR_HEAN <- stan(file = "stan_models/example.stan", data = mk_data_RMR$HEAN, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_HEAN) 
-aggregate(.~H_num, dat_na.omit_RMR$HEAN, FUN = mean)
-
-fit_RMR_HEVI <- stan(file = "stan_models/example.stan", data = mk_data_RMR$HEVI, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_HEVI) 
-aggregate(.~H_num, dat_na.omit_RMR$HEVI, FUN = mean)
-
-fit_RMR_MUPO <- stan(file = "stan_models/example.stan", data = mk_data_RMR$MUPO, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_MUPO) 
-aggregate(.~H_num, dat_na.omit_RMR$MUPO, FUN = mean)
-
-fit_RMR_MACA <- stan(file = "stan_models/example.stan", data = mk_data_RMR$MACA, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_MACA) 
-aggregate(.~H_num, dat_na.omit_RMR$MACA, FUN = mean)
-
-fit_RMR_PAMU <- stan(file = "stan_models/example.stan", data = mk_data_RMR$PAMU, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_PAMU) 
-aggregate(.~H_num, dat_na.omit_RMR$PAMU, FUN = mean)
-
-fit_RMR_PLPA <- stan(file = "stan_models/example.stan", data = mk_data_RMR$PLPA, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_PLPA) 
-aggregate(.~H_num, dat_na.omit_RMR$PLPA, FUN = mean)
-
-fit_RMR_VUOC <- stan(file = "stan_models/example.stan", data = mk_data_RMR$VUOC, warmup = 500, iter = 3000, chains = 4, cores = 2, thin = 1, control = list(adapt_delta = 0.99)) 
-summary(fit_RMR_VUOC) 
-aggregate(.~H_num, dat_na.omit_RMR$VUOC, FUN = mean)
