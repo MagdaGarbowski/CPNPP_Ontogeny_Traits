@@ -46,4 +46,22 @@ make_matrix_function<-function(df){
     n = nrow (model.matrix(~SPECIES * H_num, df)),
     s = ncol (model.matrix(~SPECIES * H_num, df)))
 }
-  
+
+################################################################################
+## Matt's functions for prepping data
+
+to_index = function(x) as.integer(as.factor(x))
+
+prep_data = function(df){
+    Hnum = to_index(df$H_num)
+    sp = to_index(df$SPECIES)
+    pop = to_index(df$POP_ID)
+    list(N = nrow(df),
+         n_Hnum = max(Hnum),
+         n_sp = max(sp),
+         n_pop = max(pop),
+         Hnum = Hnum,
+         sp = sp,
+         pop = pop,
+         y = df$value)
+}
