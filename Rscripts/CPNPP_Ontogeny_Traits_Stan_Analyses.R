@@ -58,8 +58,10 @@ all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effect
 
 #------------------------------- Contrasts -------------------------------# 
 #--------------------- Species comparisons at Hnum_1----------------------------# 
+out_names_full<-colnames(mk_data_full$RDMC$M)
 
 RMR_test<-mods_function_all(mk_data_full$RMR, mod = mod) # Bulk Effective Samples Size (ESS) is too low
+names(RMR_test)[grep("beta",names(RMR_test))]<-out_names_full
 mcmc_RMR = RMR_test
 
 Sps_comp_H1<-rep(1/11,11) #Define contribution from each species 
