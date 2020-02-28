@@ -20,7 +20,7 @@ data {
   int<lower = 1, upper = n_Hnum> Hnum[N]; // H_num
   int<lower = 1, upper = n_sp> sp[N]; // Species
   int<lower = 1, upper = n_pop> pop[N]; // populations
-  int<lower = 1, upper = n_pop> sp_Hnum[N]; // populations
+  int<lower = 1, upper = n_sp_Hnum> sp_Hnum[N]; // interaction sp:Hnum
   vector[N] y; // data points
 }
 transformed data{
