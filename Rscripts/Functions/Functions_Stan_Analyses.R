@@ -68,3 +68,81 @@ prep_data = function(df){
          sp_Hnum = sp_Hnum,
          y = df$value)
 }
+
+# -------------------------- Functions to estimate differences among groups ----------------------
+Hnum_difference_function<-function(df){
+  df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
+  df_Hnum$H1_neg<-df_Hnum[,1]*-1
+  df_Hnum$H2_neg<-df_Hnum[,2]*-1
+  df_Hnum$H3_neg<-df_Hnum[,3]*-1
+  df_Hnum$H4_neg<-df_Hnum[,4]*-1
+  
+  df_Hnum$diff_h1_h2<-rowSums(df_Hnum[,c(2,5)])
+  df_Hnum$diff_h1_h3<-rowSums(df_Hnum[,c(3,5)])
+  df_Hnum$diff_h1_h4<-rowSums(df_Hnum[,c(4,5)])
+  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(3,6)])
+  df_Hnum$diff_h2_h4<-rowSums(df_Hnum[,c(4,6)])
+  df_Hnum$diff_h3_h4<-rowSums(df_Hnum[,c(4,7)])
+  
+  dff<-data.frame(matrix(NA, nrow = 2, ncol = 0))
+  
+  dff$h1h2_90<-hdi(df_Hnum$diff_h1_h2, credMass = 0.9)
+  dff$h1h3_90<-hdi(df_Hnum$diff_h1_h3, credMass = 0.9)
+  dff$h1h4_90<-hdi(df_Hnum$diff_h1_h4, credMass = 0.9)
+  dff$h2h3_90<-hdi(df_Hnum$diff_h2_h3, credMass = 0.9)
+  dff$h2h4_90<-hdi(df_Hnum$diff_h2_h4, credMass = 0.9)
+  dff$h3h4_90<-hdi(df_Hnum$diff_h3_h4, credMass = 0.9)
+  
+  dff$h1h2_80<-hdi(df_Hnum$diff_h1_h2, credMass = 0.8)
+  dff$h1h3_80<-hdi(df_Hnum$diff_h1_h3, credMass = 0.8)
+  dff$h1h4_80<-hdi(df_Hnum$diff_h1_h4, credMass = 0.8)
+  dff$h2h3_80<-hdi(df_Hnum$diff_h2_h3, credMass = 0.8)
+  dff$h2h4_80<-hdi(df_Hnum$diff_h2_h4, credMass = 0.8)
+  dff$h3h4_80<-hdi(df_Hnum$diff_h3_h4, credMass = 0.8)
+  return(dff)
+  
+}
+
+Hnum_difference_function_noH1<-function(df){
+  df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
+  df_Hnum$H1_neg<-df_Hnum[,1]*-1
+  df_Hnum$H2_neg<-df_Hnum[,2]*-1
+  df_Hnum$H3_neg<-df_Hnum[,3]*-1
+  
+  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(4,2)])
+  df_Hnum$diff_h2_h4<-rowSums(df_Hnum[,c(4,3)])
+  df_Hnum$diff_h3_h4<-rowSums(df_Hnum[,c(5,3)])
+  
+  dff<-data.frame(matrix(NA, nrow = 2, ncol = 0))
+  
+  dff$h2h3_90<-hdi(df_Hnum$diff_h2_h3, credMass = 0.9)
+  dff$h2h4_90<-hdi(df_Hnum$diff_h2_h4, credMass = 0.9)
+  dff$h3h4_90<-hdi(df_Hnum$diff_h3_h4, credMass = 0.9)
+  
+  dff$h2h3_80<-hdi(df_Hnum$diff_h2_h3, credMass = 0.8)
+  dff$h2h4_80<-hdi(df_Hnum$diff_h2_h4, credMass = 0.8)
+  dff$h3h4_80<-hdi(df_Hnum$diff_h3_h4, credMass = 0.8)
+  return(dff)
+}
+
+#-------------------Functions for backtransforming parameter values ---------------------
+
+back_trans_function_H_num<-function(df){
+  df_Hnum<-as.data.frame(summary(df)[["summary"]])
+  df_Hnum<-df_Hnum[c("alpha", "beta_Hnum[1]","beta_Hnum[2]","beta_Hnum[3]","beta_Hnum[4]"),]
+  df_bt<-data.frame(matrix(NA, nrow = 4, ncol = 0))
+  df_bt$H_num<-c("H1","H2","H3","H4")
+  df_bt$bt_CI2.5<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
+                    exp(df_Hnum[1,4] + df_Hnum[3,4]),
+                    exp(df_Hnum[1,4] + df_Hnum[4,4]),
+                    exp(df_Hnum[1,4] + df_Hnum[5,4]))
+  df_bt$bt_CI50<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
+                   exp(df_Hnum[1,6] + df_Hnum[3,6]),
+                   exp(df_Hnum[1,6] + df_Hnum[4,6]),
+                   exp(df_Hnum[1,6] + df_Hnum[5,6]))
+  df_bt$bt_CI97.5<-c(exp(df_Hnum[1,8] + df_Hnum[2,8]), 
+                     exp(df_Hnum[1,8] + df_Hnum[3,8]),
+                     exp(df_Hnum[1,8] + df_Hnum[4,8]),
+                     exp(df_Hnum[1,8] + df_Hnum[5,8]))
+  return(df_bt)
+}
