@@ -35,7 +35,7 @@ parameters {
   vector[n_Hnum - 1] beta_Hnum_raw;
   vector[n_sp - 1] beta_sp_raw;
   vector[n_pop - 1] beta_pop_raw; 
-  vector[n_pop - 1] beta_sp_Hnum_raw; 
+  vector[n_sp_Hnum - 1] beta_sp_Hnum_raw; 
   real<lower=0> sigma;
   // For HS prior
   real<lower = 0> r1_global;
@@ -48,7 +48,7 @@ transformed parameters{
   vector[n_Hnum] beta_Hnum;
   vector[n_sp]   beta_sp;
   vector[n_pop] beta_pop; 
-  vector[n_pop] beta_sp_Hnum;  
+  vector[n_sp_Hnum] beta_sp_Hnum;  
   // For HS prior
   real<lower = 0> tau = r1_global * sqrt(r2_global);
   vector[4] lambda = r1_local .* sqrt(r2_local);
