@@ -7,8 +7,8 @@ TraitData_Pop_Avg_2017<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
 library(bayesplot)
-library(multcomp)
-library(broom)
+bayesplot::color_scheme_set("brightblue")
+
 
 SpeciesData$H_num<-as.character(as.factor(SpeciesData$H_num))
 SpeciesData$SLA<-ifelse((SpeciesData$GrowthForm %in% c("FORB","SHRUB") & SpeciesData$H_num == "H1"), NA, SpeciesData$SLA) # Add NA for H1 SLA for forb species 
@@ -24,32 +24,25 @@ traits_stan_df<-mk_data_traitvar_function(na.omit_traits)
 
 # Data for full model - mean estimates of traits by species and time 
 na.omit_species<-na.omit.fun(TraitData_Pop_Avg_2017, c("POP_ID", "value","trait","SPECIES", "H_num"))
-Traits_all<-na.omit_species[na.omit_species$trait %in% c ("RDMC","RLD","RMR","SRL"),]
+Traits_all<-na.omit_species[na.omit_species$trait %in% c ("RDMC","RTD","RMR","SRL"),]
 Traits_leaf<-na.omit_species[na.omit_species$trait %in% c ("SLA","LDMC"),]
 
 Trait_splits_full = split(Traits_all, paste(Traits_all$trait))
 Trait_splits_noH1<-split(Traits_leaf, paste(Traits_leaf$trait))
 
-mk_data_full<-lapply(Trait_splits_full, make_matrix_function) # matrix - will need to add pop_id random effect
-mk_data_noH1<-lapply(Trait_splits_noH1, make_matrix_function) 
-
-# Data for running individual models by Species and trait 
-dat_na.omit_SLA<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","SLA"))
-mk_data_SLA<-lapply(dat_na.omit_SLA, mk_data_function, "SLA")
-
-dat_na.omit_RMR<-lapply(Species_splits, na.omit.fun, c("SAMPLE_ID","POP_ID","H_num","RMR"))
-mk_data_RMR<-lapply(dat_na.omit_RMR, mk_data_function, "RMR")
 
 ################################################################################
-data_full<-lapply(Trait_splits_full, prep_data) # matrix - will need to add po
+data_full<-lapply(Trait_splits_full, prep_data) 
+data_noH1<-lapply(Trait_splits_noH1, prep_data) 
 
 
-# --------------------------------- Full model (Species and H_num together) --------------------------------------#
+
+# Full model (Species and H_num together) --------------------------------------#
 # Will still need to add random effect of population 
-mod = stan_model("stan_models/All_Traits_Random_Effects.stan")
+mod = stan_model("stan_models/All_Traits_Random_Effects_HS.stan")
   
 mods_function_all <- function(df,
-                          mod_file = "stan_models/All_TraitsbySpecies_matrix.stan",
+                          mod_file = "stan_models/All_Traits_Random_Effects_HS.stan",
                           iter = 1000,
                           cores = 2,
                           mod = stan_model(mod_file), ...){
@@ -57,110 +50,53 @@ mods_function_all <- function(df,
   sampling(mod, df, iter = iter, cores = cores, ...) 
 }
 
-## all_mods_full = lapply(data_full, mods_function_all, mod = mod) # Bulk effective sample size too low 
-
 # The new model does not sample as efficiently as the matrix
 # representation, so higher adapt delta and iterations are needed
+
 all_mods_full = lapply(data_full, mods_function_all, mod = mod,
                        pars = c("beta_Hnum_raw", "beta_sp_raw",
                                 "beta_pop_raw", "beta_sp_Hnum_raw"),
                        include = FALSE,
                        warmup = 1000, iter = 1500,
-                       control = list(adapt_delta = 0.95)) # Exclude the "raw" versions of betas
+                       control = list(adapt_delta = 0.95))  # Bulk Effective Sample Size too low 
 
-all_mods_noH1 = lapply(mk_data_noH1, mods_function_all, mod = mod) # Bulk effective sample size too low 
+all_mods_noH1 = lapply(data_noH1, mods_function_all, mod = mod,
+                       pars = c("beta_Hnum_raw", "beta_sp_raw",
+                                "beta_pop_raw", "beta_sp_Hnum_raw"),
+                       include = FALSE,
+                       warmup = 1000, iter = 1500,
+                       control = list(adapt_delta = 0.95)) # Divergent transitions and Bulk Effective Sample Size too low 
 
-#------------------------------- Contrasts -------------------------------# 
-#--------------------- Species comparisons at Hnum_1----------------------------# 
+# RMR test ------------------------------------------------------------# 
+
 out_names_full<-colnames(mk_data_full$RDMC$M)
 
-RMR_test<-mods_function_all(mk_data_full$RMR, mod = mod) # Bulk Effective Samples Size (ESS) is too low
-names(RMR_test)[grep("beta",names(RMR_test))]<-out_names_full
-mcmc_RMR = RMR_test
+RMR_test<-mods_function_all(data_full$RMR, mod = mod, 
+                            pars = c("beta_Hnum_raw","beta_sp_raw", "beta_pop_raw","beta_sp_Hnum_raw"),
+                            include = FALSE, 
+                            warmup = 1000, iter = 1500, 
+                            control = list(adapt_delta = 0.95)) # Bulk effective sample size too low 
+View(summary(RMR_test)[["summary"]])
+plot(RMR_test, pars = "beta_Hnum")
 
-Sps_comp_H1<-rep(1/11,11) #Define contribution from each species 
-coefs_Sps_H1<-as.matrix(mcmc_RMR)[,1:11] # pick coeffecients to compare 
-dat_Sps_H1<-data.frame(x = colnames(coefs_Sps_H1)) # get colnames to make Tukey matrix
-tuk.mat_Sps_H1<-contrMat(n = table(dat_Sps_H1$x), type = "Tukey") # make Tukey matrix
-Xmat_Sps_H1<-model.matrix(~x, dat_Sps_H1) 
-pairwise.mat_Sps_H1<-tuk.mat_Sps_H1 %*% t(Xmat_Sps_H1)
-comps_Sps_H1 = tidyMCMC(coefs_Sps_H1 %*% t(pairwise.mat_Sps_H1), conf.int = TRUE, conf.method = "HPDinterval") # get effect sie CI - is HPD appropriate? 
+# All mods  ----------------------------------------------------------# 
 
-ggplot(comps_Sps_H1, aes(y = estimate, x = term)) + 
-  geom_pointrange(aes(ymin = conf.low,
-                      ymax = conf.high)) + geom_hline(yintercept = 0, linetype = "dashed") +
-  scale_y_continuous("Effect size") + scale_x_discrete("") + coord_flip() +
-  theme_classic()
+View(summary(all_mods_full$RMR)[["summary"]])
+plot(all_mods_full$RMR, pars = "beta_Hnum")
 
-# Compare to raw_data boxplot to see if results make sense 
-dat_raw_plotted<-boxplot(value ~ SPECIES, data = Trait_splits_full$RMR[Trait_splits_full$RMR$H_num == "H1",])
+View(summary(all_mods_full$RDMC)[["summary"]])
+plot(all_mods_full$RDMC, pars = "beta_Hnum")
 
-# Questions for Matt: 
-# (1) Am I doing this right?
+View(summary(all_mods_full$SRL)[["summary"]])
+plot(all_mods_full$SRL, pars = "beta_Hnum")
 
-# No - not really. The general idea is correct, but:
-# (this is way easier for me if you tell me where you get this code/ideas)
+View(summary(all_mods_full$RTD)[["summary"]])
+plot(all_mods_full$RTD, pars = "beta_Hnum")
 
-#     1. This does not correct for multiple comparisons - the "Tukey"
-#     matrix above does not actually apply the correction, just builds
-#     a matrix for calculating the comparisons.
+View(summary(all_mods_noH1$SLA)[["summary"]])
+plot(all_mods_noH1$SLA, pars = "beta_Hnum")
 
-#     2. The creation of "pairwise.mat_Sps_H1 is confusing to me - I
-#     do not think this results in the correct prediction
-#     matrix. Typically, we use just the contrasts.
+View(summary(all_mods_noH1$LDMC)[["summary"]])
+plot(all_mods_noH1$LDMC, pars = "beta_Hnum")
 
 
-
-# (2) Interpretation: If for a given comparison the CI does not intersect 0, the two are different.
-#    See above - you should not interpret these estimates.
-#
-#    Generally, yes - but the Bayesian interpretation is that the
-#    estimated differences do not include 0 - we try to avoid making
-#    binary statements such as "are/are not different"
-
-# (2) e.g. SPECIESVUOC is "higher" than all other species besides intercept (ACMI)? 
-# (3) Is HPD (Highest posterior density interval) appropriate to use?
-
-#     Yes - when the estimates are symmetric, it is roughly equivalent to
-#     the quantile method.
-
-
-#--------------------- H_num main effects----------------------------# 
-# STUCK HERE
-# Questions for Matt: 
-# (1) How do I pull comparisons from ALL species at each H_num for comparisons? 
-# There are 44  values (every species at every H_num) but I want to end up with 4 (i.e. "main effect" of H_num) 
-
-# You want the marginal effect of H_num, which is the effects of H_num
-# averaged over differences in the other parameters. Again, this is
-# where contrasts can make this a whole lot easier. You can build a
-# contrast for these effects. For example, to test H1 vs H2, it
-# involves setting all the "H_num = 1" effects to positive and all the
-# corresponding "H_num = 2" to negative.
-
-comp_H<-rep(1/44, 44) # Define contribution from each H_num
-coefs_comp_H<-as.matrix(mcmc_RMR)[,1:44] # All coefs should go into comparisons for H_num? 
-dat_comp_H<-data.frame(x = colnames(coefs_comp_H)) # get colnames to make Tukey matrix
-Xmat_comp_H<-model.matrix(~x, dat_comp_H) 
-pairwise.mat_comp_H<-comp_H %*% t(Xmat_comp_H)
-
-comps_comp_H = tidyMCMC(coefs_comp_H %*% t(pairwise.mat_comp_H), conf.int = TRUE, conf.method = "HPDinterval") # get effect sie CI - is HPD appropriate? 
-#
-#
-#
-#
-#
-#
-#
-#
-#
-# ------------------------------------------------------------- Variance model----------------------------------------------------------------------------
-# Questions: Which traits are most variable through time and does this depend on GrowthForm?
-# To "match" y ~ H_num + GrowthForm + H_num * GrowthForm + (1|POP_ID) I want: 
-# CV ~ GrowthForm + (1|POP_ID) - H_num within a POP_ID is what the CV is calculated from 
-# CV for every trait x POP_ID? 
-
-fit_trait_var<- stan(file = "stan_models/example.stan", data = traits_stan_df, warmup = 500, iter = 2000, chains = 4, cores = 2, control = list(adapt_delta = 0.90))  
-
-summary(fit_trait_var)$summary
-aggregate(.~H_num, dat_na.omit_RMR$ACMI, FUN = mean)
