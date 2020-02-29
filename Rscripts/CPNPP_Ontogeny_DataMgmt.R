@@ -143,6 +143,8 @@ Trait_data$SLA <- Trait_data$SLA/10
 Leaf_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID", "LEAF_TOTAL", "Total.Of.PROJ_AREA_AG", "LEAF", "LEAVES_TOTAL","LWS","LWD", "LWD_tmp", "LWD_A", "LWD_B","LW_Max_sum","SLA")])
 subset(Trait_data, Trait_data[,"SLA"] >100)
 Trait_data$SLA[Trait_data$SLA > 400] <- NA 
+Trait_data$SLA[Trait_data$SLA == 0] <- NA 
+
 
 # ---------------------------------------------- LDMC -------------------------------------------------------------
 # Select "max" weight from LWF_A or LWS_A, LWF_B or LWS_B), BWS or BWF... if NA on those three then do LWS and LWD 
@@ -177,24 +179,24 @@ Trait_data$LDMC<-ifelse(Trait_data$SAMPLE_ID %in% c("ACMI_UTNW_CCC_4_H4_R"),
                         
 Leaf_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","LWS","L.SFW","LWD","LWS_A","LWS_B","BWS_A","LWD_tmp", "LWD_A", "LWD_B","BWD_A","LW_Max_Sum","LDMC")])
 Trait_data$LDMC[Trait_data$LDMC > 0.8] <- NA 
+Trait_data$LDMC<-Trait_data$LDMC * 1000
 
+# ------------------------------------------ SRL (m g^-1) -------------------------------------------------
 
-# ------------------------------------------ SRL -------------------------------------------------
+Trait_data$SRL <- ((Trait_data$SumOfLength.cm./Trait_data$RWD))/100 # SRL - Specific root length
+# Trait_data$SRL[Trait_data$SRL > 1300] <- NA 
 
-Trait_data$SRL <- ((Trait_data$SumOfLength.cm./Trait_data$RWD)/1000) # SRL - Specific root length
-Trait_data$SRL[Trait_data$SRL > 300] <- NA 
+#------------------------------------------ RDMC  -------------------------------------------------
 
-#------------------------------------------ RDMC & RTD  -------------------------------------------------
-
-Trait_data$RDMC <- (Trait_data$RWD)/(Trait_data$RWF) # RDMC (Root Dry Matter Content)
+Trait_data$RDMC <- ((Trait_data$RWD)/(Trait_data$RWF)) * 100 # RDMC (Root Dry Matter Content)
 
 Trait_data [Trait_data$SAMPLE_ID == "MUPO_AZSE_BRR_5_H1_G", "RDMC"] <-NA
 Trait_data [Trait_data$SAMPLE_ID == "MUPO_AZSE_SIT_3_H1_O", "RDMC"] <-NA
-Trait_data$RDMC[Trait_data$RDMC > 0.6] <- NA 
+Trait_data$RDMC[Trait_data$RDMC > 40] <- NA 
 
 #---------------------------------------------RTD-------------------------------------------
 
-Trait_data$RTD <- (Trait_data$RWD)/(Trait_data$SumOfRootVolume.cm3.) # RTD (Root tissue density - g / cm ^3) 
+Trait_data$RTD <- (Trait_data$RWD)/(Trait_data$SumOfRootVolume.cm3.) # RTD (Root tissue density - mg / mm ^3) 
 Trait_data$RTD[Trait_data$RTD > 0.6] <- NA 
 
 # ----------------------------------- RMR ------------------------------------------------------------------
@@ -202,18 +204,31 @@ Trait_data$RTD[Trait_data$RTD > 0.6] <- NA
 Trait_data$RMR <- (Trait_data$RWD)/(rowSums(Trait_data[,c( "CWD", "SWD","LWD", "RWD", "LWD_A", "LWD_B", "BWD_A")], na.rm = TRUE)) # RMR (Root Mass Ratio)
 Trait_data$RMR[Trait_data$RMR> 0.9] <- NA 
 
-Root_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","SumOfLength.cm.","RWF","RWD","SRL", "RDMC", "RTD", "RMR")])
-# View(Root_vars) 
+#Root_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","SumOfLength.cm.","RWF","RWD","SRL", "RDMC", "RTD", "RMR")])
+
+
+# ----------------------------------- HEIGHT ------------------------------------------------------------------
+
+Trait_data$HT[Trait_data$HT<0.05] <- 0.1
+
+#Root_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","SumOfLength.cm.","RWF","RWD","SRL", "RDMC", "RTD", "RMR")])
+
+# ------------------------------- One sided root area/one sided shoot area -----------------------------------
+
+Trait_data$RASARatio<-(Trait_data$SumOfProjArea.cm2./Trait_data$Total.Of.PROJ_AREA_AG)
+Trait_data$RASARatio<-ifelse((Trait_data$H_num == "H4"), NA, Trait_data$RASARatio)
+Trait_data$RASARatio[Trait_data$RASARatio > 40] <- NA
 
 # ------------------------------ Calculate Population Avgs ------------------------
 
-Trait_avg_pop_df<-lapply(c("SLA","LDMC", "RMR","SRL","RDMC","RTD"), function (y) 
+Trait_avg_pop_df<-lapply(c("SumOfLength.cm.","SumOfAvgDiam.mm.","HT","SLA","LDMC", "RMR","SRL","RDMC","RTD","RASARatio"), function (y) 
   agg_mean_fun(Trait_data, y, "H_num","POP_ID", c("H_num","POP_ID","value","trait")))
 
 Trait_avg_pop_df<-do.call(rbind, Trait_avg_pop_df)
 
 Trait_avg_pop_df_3<-pop_id_function(Trait_avg_pop_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
 
+Trait_avg_pop_df_3<-as.data.frame(Trait_avg_pop_df_3[!colnames(Trait_avg_pop_df_3) %in% c("LOCATION_CODE","POP_CODE")])
 
 # ------------------------------ Calculate Species Avgs ------------------------
 
@@ -221,8 +236,6 @@ Trait_avg_sps_df<-lapply(c("SLA","LDMC", "RMR","SRL","RDMC","RTD"), function (y)
   agg_mean_fun(Trait_data, y, "H_num","SPECIES", c("H_num","SPECIES","value","trait")))
 
 Trait_avg_sps_df<-do.call(rbind, Trait_avg_sps_df)
-
-Trait_avg_pop_df_3<-pop_id_function(Trait_avg_pop_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
 
 
 # ------------------------Calculate Relative Growth Rates ----------------------
@@ -278,6 +291,8 @@ Growth_calc<- by(GrowthRates_Traits2017_3, GrowthRates_Traits2017_3$POP_ID, func
   df$RGR_Below_ln = growth_function(df$Below_weight_avg, df$H_num)
   df$RGR_Tot_ln = growth_function(df$Tot_weight_avg, df$H_num)
   df$RER_ln = growth_function(df$RE_avg, df$H_num)
+  df$RER = growth_function_not_log(df$RE_avg, df$H_num)
+  df$RGR_Tot = growth_function_not_log(df$Tot_weight_avg, df$H_num)
   df
 })
 
@@ -286,6 +301,30 @@ Growth_calc_df<-do.call(rbind, Growth_calc)
 GrowthRates_Traits2017_3<-pop_id_function(Growth_calc_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
 GrowthRates_Traits2017_3$Days<-GrowthRates_Traits2017_3$H_num
 levels(GrowthRates_Traits2017_3$H_num)[(GrowthRates_Traits2017_3$H_num) %in% c("10","24","42","84")]<-c("H1","H2","H3","H4")
+
+# -------------------- Combine growth rate data and trait population data --------------------
+
+Pop_avg_data_2<- reshape(Trait_avg_pop_df_3, idvar = c("POP_ID","H_num","GrowthForm", "SPECIES"), timevar = "trait", direction = "wide")
+ag2<-Pop_avg_data_2
+# Data transformations to improve normality 
+cols<- c("value.SumOfLength.cm.","value.SumOfAvgDiam.mm.","value.HT","value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD","value.RASARatio")
+ag2[cols]<-log(ag2[cols])
+colnames(ag2)[5:14]<-c("ln.SumOfLength.cm.","ln.value.SumOfAvgDiam.mm.","ln.HT", "ln.SLA", "ln.LDMC", "ln.RMR", "ln.SRL", "ln.RDMC", "ln.RTD","value.RASARatio")
+
+Pop_avg_data_3<-merge(Pop_avg_data_2,ag2, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
+Pop_avg_data_wrates<-merge(Pop_avg_data_3,GrowthRates_Traits2017_3, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
+
+#Back into long format
+Pop_avg_data_wrates_long<-reshape(Pop_avg_data_wrates, 
+  direction = "long",
+  varying = names(Pop_avg_data_wrates)[5:34],
+  v.names = "value",
+  idvar = c("H_num","POP_ID"),
+  timevar = "trait",
+  times = names(Pop_avg_data_wrates)[5:34])
+
+rownames(Pop_avg_data_wrates_long) <- NULL
+
 
 # ------------------------Calculate Plasticity Index ----------------------
 
@@ -354,10 +393,10 @@ write.csv(Trait_data, file = "Data_Generated/TraitData_2017.csv")
 write.csv(GrowthRates_Traits2017_3, "Data_Generated/TraitData_GrowthRates_2017.csv")
 write.csv(distances_all, "Data_Generated/TraitData_Plasticity_2017.csv")
 write.csv(distances_all_10day, "Data_Generated/TraitData_Plasticity_2017_10day.csv")
-write.csv(Trait_avg_pop_df_3, "Data_Generated/TraitData_SpeciesAvg_2017.csv")
+write.csv(Trait_avg_sps_df, "Data_Generated/TraitData_SpeciesAvg_2017.csv")
 write.csv(Trait_avg_pop_df_3, "Data_Generated/TraitData_PopAvg_2017.csv")
 write.csv(Rel_cal_df_3, "Data_Generated/TraitData_RelativeDiff_2017.csv")
-
+write.csv(Pop_avg_data_wrates_long, "Data_Generated/TraitData_PopAvg_wRates_2017.csv")
 
 
 
