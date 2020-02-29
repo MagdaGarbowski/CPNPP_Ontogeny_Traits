@@ -127,22 +127,40 @@ Hnum_difference_function_noH1<-function(df){
 
 #-------------------Functions for backtransforming parameter values ---------------------
 
-back_trans_function_H_num<-function(df){
-  df_Hnum<-as.data.frame(summary(df)[["summary"]])
-  df_Hnum<-df_Hnum[c("alpha", "beta_Hnum[1]","beta_Hnum[2]","beta_Hnum[3]","beta_Hnum[4]"),]
+back_trans_function_H_num<-function(df, var){
+  df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
   df_bt<-data.frame(matrix(NA, nrow = 4, ncol = 0))
   df_bt$H_num<-c("H1","H2","H3","H4")
-  df_bt$bt_CI2.5<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
+  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
                     exp(df_Hnum[1,4] + df_Hnum[3,4]),
                     exp(df_Hnum[1,4] + df_Hnum[4,4]),
                     exp(df_Hnum[1,4] + df_Hnum[5,4]))
-  df_bt$bt_CI50<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
-                   exp(df_Hnum[1,6] + df_Hnum[3,6]),
-                   exp(df_Hnum[1,6] + df_Hnum[4,6]),
-                   exp(df_Hnum[1,6] + df_Hnum[5,6]))
-  df_bt$bt_CI97.5<-c(exp(df_Hnum[1,8] + df_Hnum[2,8]), 
-                     exp(df_Hnum[1,8] + df_Hnum[3,8]),
-                     exp(df_Hnum[1,8] + df_Hnum[4,8]),
-                     exp(df_Hnum[1,8] + df_Hnum[5,8]))
+  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
+                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
+                   exp(df_Hnum[1,5] + df_Hnum[4,5]),
+                   exp(df_Hnum[1,5] + df_Hnum[5,5]))
+  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
+                     exp(df_Hnum[1,6] + df_Hnum[3,6]),
+                     exp(df_Hnum[1,6] + df_Hnum[4,6]),
+                     exp(df_Hnum[1,6] + df_Hnum[5,6]))
+  df_bt$trait <-var
+  return(df_bt)
+}
+
+
+back_trans_function_H_num_noH1<-function(df, var){
+  df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
+  df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
+  df_bt$H_num<-c("H2","H3","H4")
+  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
+                    exp(df_Hnum[1,4] + df_Hnum[3,4]),
+                    exp(df_Hnum[1,4] + df_Hnum[4,4]))
+  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
+                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
+                   exp(df_Hnum[1,5] + df_Hnum[4,5]))
+  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
+                     exp(df_Hnum[1,6] + df_Hnum[3,6]),
+                     exp(df_Hnum[1,6] + df_Hnum[4,6]))
+  df_bt$trait <- var
   return(df_bt)
 }

@@ -6,8 +6,11 @@ Pop_avg_data_wrates<-read.csv("Data_Generated/TraitData_PopAvg_wRates_2017.csv")
 
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
+library(rstanarm)
 library(bayesplot)
 library(HDInterval)
+library(gridExtra)
+
 bayesplot::color_scheme_set("brightblue")
 
 Pop_avg_data_wrates$H_num<-as.character(as.factor(Pop_avg_data_wrates$H_num))
@@ -74,10 +77,49 @@ H_num_diff_RER<-Hnum_difference_function_noH1(all_mods_noH1$RER_ln)
 H_num_diff_RGR<-Hnum_difference_function_noH1(all_mods_noH1$RGR_Tot_ln)
 
 # Back transformed values for plotting --------------------------------------------
-RMR_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RMR)
-RDMC_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RDMC)
-SRL_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.SRL)
-RTD_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RTD)
+RMR_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RMR, "RMR")
+RDMC_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RDMC, "RDMC")
+SRL_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.SRL, "SRL")
+RTD_bt_Hnum<-back_trans_function_H_num(all_mods_full$ln.RTD, "RTD")
+
+SLA_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH1$ln.SLA, "SLA")
+LDMC_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH1$ln.LDMC, "LDMC")
+RGR_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH1$RGR_Tot_ln, "RGR")
+RER_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH1$RER_ln, "RER")
+
+CI_backtrans<-rbind(RMR_bt_Hnum, RDMC_bt_Hnum, SRL_bt_Hnum, RTD_bt_Hnum, 
+                    SLA_bt_Hnum, LDMC_bt_Hnum, RGR_bt_Hnum, RER_bt_Hnum)
+
+
+# Plotting ------------------------------------------------------------------------
+
+plot <- function(df, yscale, var){
+  ggplot(df, aes(x = H_num, y = bt_CI50))+
+  geom_errorbar(aes(ymin = bt_CI05, ymax = bt_CI95), size =.6, width = .2)+
+  geom_point() + ylim(yscale)+ 
+  theme_bw()+
+  labs(title = var)
+}
+
+RMR_plot<-plot(RMR_bt_Hnum, c(0.18, 0.38), "RMR")
+RDMC_plot<-plot(RDMC_bt_Hnum, c(0.08, 0.16), "RDMC")
+SRL_plot<-plot(SRL_bt_Hnum, c(10.0,50), "SRL")
+RTD_plot<-plot(RTD_bt_Hnum, c(0.05,0.11), "RTD")
+
+SLA_plot<-plot(SLA_bt_Hnum, c(25,55), "SLA")
+LDMC_plot<-plot(LDMC_bt_Hnum, c(0.1, 0.2), "LDMC")
+RER_plot<-plot(RER_bt_Hnum, c(1, 1.15), "RER")
+RGR_plot<-plot(RGR_bt_Hnum, c(1, 1.15), "RGR")
+
+grid.arrange(SLA_plot,LDMC_plot,RMR_plot,RGR_plot,
+             SRL_plot,RDMC_plot,RTD_plot,RER_plot, ncol = 4)
+
+
+
+
+
+
+
 
 #
 #
