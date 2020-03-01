@@ -70,88 +70,79 @@ prep_data = function(df){
 }
 
 # -------------------------- Functions to estimate differences among groups ----------------------
-Hnum_difference_function<-function(df){
+Hnum_difference_function_noH4<-function(df){
   df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
   df_Hnum$H1_neg<-df_Hnum[,1]*-1
   df_Hnum$H2_neg<-df_Hnum[,2]*-1
   df_Hnum$H3_neg<-df_Hnum[,3]*-1
-  df_Hnum$H4_neg<-df_Hnum[,4]*-1
   
-  df_Hnum$diff_h1_h2<-rowSums(df_Hnum[,c(2,5)])
-  df_Hnum$diff_h1_h3<-rowSums(df_Hnum[,c(3,5)])
-  df_Hnum$diff_h1_h4<-rowSums(df_Hnum[,c(4,5)])
-  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(3,6)])
-  df_Hnum$diff_h2_h4<-rowSums(df_Hnum[,c(4,6)])
-  df_Hnum$diff_h3_h4<-rowSums(df_Hnum[,c(4,7)])
+  df_Hnum$diff_h1_h2<-rowSums(df_Hnum[,c(4,2)])
+  df_Hnum$diff_h1_h3<-rowSums(df_Hnum[,c(4,3)])
+  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(5,3)])
   
   dff<-data.frame(matrix(NA, nrow = 2, ncol = 0))
   
   dff$h1h2_90<-hdi(df_Hnum$diff_h1_h2, credMass = 0.9)
   dff$h1h3_90<-hdi(df_Hnum$diff_h1_h3, credMass = 0.9)
-  dff$h1h4_90<-hdi(df_Hnum$diff_h1_h4, credMass = 0.9)
   dff$h2h3_90<-hdi(df_Hnum$diff_h2_h3, credMass = 0.9)
-  dff$h2h4_90<-hdi(df_Hnum$diff_h2_h4, credMass = 0.9)
-  dff$h3h4_90<-hdi(df_Hnum$diff_h3_h4, credMass = 0.9)
   
   dff$h1h2_80<-hdi(df_Hnum$diff_h1_h2, credMass = 0.8)
   dff$h1h3_80<-hdi(df_Hnum$diff_h1_h3, credMass = 0.8)
-  dff$h1h4_80<-hdi(df_Hnum$diff_h1_h4, credMass = 0.8)
   dff$h2h3_80<-hdi(df_Hnum$diff_h2_h3, credMass = 0.8)
-  dff$h2h4_80<-hdi(df_Hnum$diff_h2_h4, credMass = 0.8)
-  dff$h3h4_80<-hdi(df_Hnum$diff_h3_h4, credMass = 0.8)
   return(dff)
-  
 }
 
-Hnum_difference_function_noH1<-function(df){
-  df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
-  df_Hnum$H1_neg<-df_Hnum[,1]*-1
-  df_Hnum$H2_neg<-df_Hnum[,2]*-1
-  df_Hnum$H3_neg<-df_Hnum[,3]*-1
-  
-  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(4,2)])
-  df_Hnum$diff_h2_h4<-rowSums(df_Hnum[,c(4,3)])
-  df_Hnum$diff_h3_h4<-rowSums(df_Hnum[,c(5,3)])
+
+sp_Hnum_diff<-function(datframe){
+  df<-datframe
+  df$H1_neg<-df[,1]*-1
+  df$H2_neg<-df[,2]*-1
+  df$H3_neg<-df[,3]*-1
+  df$diff_h1_h2<-rowSums(df[,c(4,2)])
+  df$diff_h1_h3<-rowSums(df[,c(4,3)])
+  df$diff_h2_h3<-rowSums(df[,c(5,3)])
   
   dff<-data.frame(matrix(NA, nrow = 2, ncol = 0))
   
-  dff$h2h3_90<-hdi(df_Hnum$diff_h2_h3, credMass = 0.9)
-  dff$h2h4_90<-hdi(df_Hnum$diff_h2_h4, credMass = 0.9)
-  dff$h3h4_90<-hdi(df_Hnum$diff_h3_h4, credMass = 0.9)
-  
-  dff$h2h3_80<-hdi(df_Hnum$diff_h2_h3, credMass = 0.8)
-  dff$h2h4_80<-hdi(df_Hnum$diff_h2_h4, credMass = 0.8)
-  dff$h3h4_80<-hdi(df_Hnum$diff_h3_h4, credMass = 0.8)
+  dff$h1h2_90<-hdi(df$diff_h1_h2, credMass = 0.9)
+  dff$h1h3_90<-hdi(df$diff_h1_h3, credMass = 0.9)
+  dff$h2h3_90<-hdi(df$diff_h2_h3, credMass = 0.9)
   return(dff)
+}
+
+# -------------------- Functions for pulling sp_Hnum samples from mod output------------------
+
+sample_species_function<-function(df){
+  dat<-reshape(df, 
+               direction = "long",
+               varying = names(df)[1:33],
+               v.names = "sample",
+               idvar = "x",
+               timevar = "sp_Hnum",
+               times = names(df)[1:33])
+  dat$species<-substr(dat$sp_Hnum, start = 1, stop = 4)
+  return(dat)
+}
+
+samples_wide_fun<-function(df){
+  sp_df<-as.data.frame(df[c("sp_Hnum","sample")])
+  rownames(sp_df)<-NULL
+  sp_df$ID <- rep(1:2000, times = 3)
+  sp_df_wide<-reshape(sp_df, 
+                      timevar = "sp_Hnum",
+                      idvar = "ID",
+                      direction = "wide")
+  sp_df_wide<-sp_df_wide[-c(1)]
+  sp_df_wide
 }
 
 #-------------------Functions for backtransforming parameter values ---------------------
 
-back_trans_function_H_num<-function(df, var){
-  df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
-  df_bt<-data.frame(matrix(NA, nrow = 4, ncol = 0))
-  df_bt$H_num<-c("H1","H2","H3","H4")
-  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
-                    exp(df_Hnum[1,4] + df_Hnum[3,4]),
-                    exp(df_Hnum[1,4] + df_Hnum[4,4]),
-                    exp(df_Hnum[1,4] + df_Hnum[5,4]))
-  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
-                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
-                   exp(df_Hnum[1,5] + df_Hnum[4,5]),
-                   exp(df_Hnum[1,5] + df_Hnum[5,5]))
-  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
-                     exp(df_Hnum[1,6] + df_Hnum[3,6]),
-                     exp(df_Hnum[1,6] + df_Hnum[4,6]),
-                     exp(df_Hnum[1,6] + df_Hnum[5,6]))
-  df_bt$trait <-var
-  return(df_bt)
-}
 
-
-back_trans_function_H_num_noH1<-function(df, var){
+back_trans_function_H_num_noH4<-function(df, var){
   df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
   df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
-  df_bt$H_num<-c("H2","H3","H4")
+  df_bt$H_num<-c("H1","H2","H3")
   df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
                     exp(df_Hnum[1,4] + df_Hnum[3,4]),
                     exp(df_Hnum[1,4] + df_Hnum[4,4]))
@@ -161,6 +152,24 @@ back_trans_function_H_num_noH1<-function(df, var){
   df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
                      exp(df_Hnum[1,6] + df_Hnum[3,6]),
                      exp(df_Hnum[1,6] + df_Hnum[4,6]))
+  df_bt$trait <- var
+  return(df_bt)
+}
+
+
+back_trans_function_sp_H_num<-function(df, var){
+  df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
+  df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
+  df_bt$H_num<-c("H1","H2","H3")
+  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
+                   exp(df_Hnum[1,4] + df_Hnum[3,4]),
+                   exp(df_Hnum[1,4] + df_Hnum[4,4]))
+  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
+                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
+                   exp(df_Hnum[1,5] + df_Hnum[4,5]))
+  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
+                   exp(df_Hnum[1,6] + df_Hnum[3,6]),
+                   exp(df_Hnum[1,6] + df_Hnum[4,6]))
   df_bt$trait <- var
   return(df_bt)
 }
