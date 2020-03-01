@@ -95,22 +95,57 @@ RER_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RER, "RER")
 
 # Get names  ----------------------------------------------------------# 
 
-beta_names_noh4<-unique(Traits_all_noH4[,c("SPECIES", "H_num")])
-beta_names_noh4$names_noh4<-paste(beta_names_noh4$SPECIES, beta_names_noh4$H_num, sep = "_")
-beta_names_noh4<- beta_names_noh4[order(beta_names_noh4$names_noh4),]
-beta_names_noh4<-beta_names_noh4$names_noh4
+## beta_names_noh4<-unique(Traits_all_noH4[,c("SPECIES", "H_num")])
+## beta_names_noh4$names_noh4<-paste(beta_names_noh4$SPECIES, beta_names_noh4$H_num, sep = "_")
+## beta_names_noh4<- beta_names_noh4[order(beta_names_noh4$names_noh4),]
+## beta_names_noh4<-beta_names_noh4$names_noh4
+
+# Not quite right - the order is based on creating a factor but it for
+# each split, so if a species or H_num is not present in one, all the
+# levels are shifted. This is how you would do for one
+# beta_names = levels(factor(paste(Traits_all_noH4$SPECIES, Traits_all_noH4$H_num)))
+
+# So, to get the correct names for each model, run this
+inter_names = lapply(Trait_splits_noH4, function(df)
+    levels(factor(paste(df$SPECIES, df$H_num, sep = "_"))))
+
+# And to put those names on the model, do this
+tmp = lapply(seq_along(inter_names), function(i) {
+    x = all_mods_noH4[[i]]
+    names(x)[grep("beta_sp_Hnum", names(x))] = inter_names[[i]]
+    x
+    })
 
 # Estimate differences between H_num for given species x trait  --------------------------
 # Come back and figure out how to make this more effecient
 
 SLA_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.SLA_w_cots, pars = "beta_sp_Hnum"))
-names(SLA_sp_Hnum)[grep("beta_sp_Hnum",names(SLA_sp_Hnum))]<-beta_names_noh4
+## names(SLA_sp_Hnum)[grep("beta_sp_Hnum",names(SLA_sp_Hnum))]<-beta_names_noh4
 SLA_sp_samples<-sample_species_function(SLA_sp_Hnum)
 SLA_sps_Hnum_splits<-split(SLA_sp_samples, paste(SLA_sp_samples$species))
 
 SLA_dfs<-lapply(SLA_sps_Hnum_splits, samples_wide_fun)
 SLA_sp_Hnum_diffs<-lapply(SLA_dfs, sp_Hnum_diff)
 SLA_sp_Hnum_diffs_df<-do.call(rbind, SLA_sp_Hnum_diffs)
+################################################################################
+interactions = lapply(all_mods_noH4, function(x) {
+    ans = as.data.frame(x)
+    ans[,grep("beta_sp_Hnum", colnames(ans))]
+    })
+
+# apply the names again
+interactions = mapply(function(x, nm) {colnames(x) = nm; x},
+                      x = interactions, nm = inter_names, SIMPLIFY = FALSE)
+
+# big list of lists with all differences for each species by every h_num
+tmp = lapply(interactions, diff_by_group)
+
+## Summarize it all
+lapply(tmp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975)))))
+
+################################################################################
+
+
 
 LDMC_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.LDMC_w_cots, pars = "beta_sp_Hnum"))
 names(LDMC_sp_Hnum)[grep("beta_sp_Hnum",names(LDMC_sp_Hnum))]<-beta_names_noh4

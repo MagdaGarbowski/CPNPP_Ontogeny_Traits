@@ -69,6 +69,27 @@ prep_data = function(df){
          y = df$value)
 }
 
+# Difference function
+diff_by_group = function(samples, diff_var = "_H[0-9]")
+{
+    ## browser()
+    grps = factor(gsub(diff_var, "", colnames(samples)))
+    ans = lapply(seq_along(levels(grps)), function(i){
+        pairwise_diff(samples[,as.integer(grps) == i])
+    })
+    names(ans) = levels(grps)
+    ans
+}
+
+pairwise_diff = function(samples)
+{
+    i = combn(seq(ncol(samples)), 2, simplify = FALSE)
+    ans = lapply(i, function(j) samples[,j[1]] - samples[,j[2]])
+    names(ans) = sapply(i, paste, collapse="-")
+    ans
+}
+
+
 # -------------------------- Functions to estimate differences among groups ----------------------
 Hnum_difference_function_noH4<-function(df){
   df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
