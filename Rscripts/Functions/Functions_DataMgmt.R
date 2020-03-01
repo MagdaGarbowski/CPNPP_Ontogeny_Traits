@@ -16,6 +16,11 @@ growth_function<- function(trait, days){
   c(NA, diff(log(trait))/diff(days))
 }
 
+# Growth function without log data 
+growth_function_not_log<- function(trait, days){
+  c(NA, diff(trait)/diff(days))
+}
+
 # Relative change function 
 relative_change_function<- function(trait){
   c(NA,diff(trait))
