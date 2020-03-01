@@ -92,6 +92,28 @@ Hnum_difference_function_noH4<-function(df){
   return(dff)
 }
 
+Hnum_difference_function_wTRY<-function(df){
+  df_Hnum<-as.data.frame(rstan::extract(df, pars = "beta_Hnum"))
+  df_Hnum$H1_neg<-df_Hnum[,1]*-1
+  df_Hnum$H2_neg<-df_Hnum[,2]*-1
+  df_Hnum$H3_neg<-df_Hnum[,3]*-1
+  
+  df_Hnum$diff_h1_h2<-rowSums(df_Hnum[,c(4,2)])
+  df_Hnum$diff_h1_h3<-rowSums(df_Hnum[,c(4,3)])
+  df_Hnum$diff_h2_h3<-rowSums(df_Hnum[,c(5,3)])
+  
+  dff<-data.frame(matrix(NA, nrow = 2, ncol = 0))
+  
+  dff$h1h2_90<-hdi(df_Hnum$diff_h1_h2, credMass = 0.9)
+  dff$h1h3_90<-hdi(df_Hnum$diff_h1_h3, credMass = 0.9)
+  dff$h2h3_90<-hdi(df_Hnum$diff_h2_h3, credMass = 0.9)
+  
+  dff$h1h2_80<-hdi(df_Hnum$diff_h1_h2, credMass = 0.8)
+  dff$h1h3_80<-hdi(df_Hnum$diff_h1_h3, credMass = 0.8)
+  dff$h2h3_80<-hdi(df_Hnum$diff_h2_h3, credMass = 0.8)
+  return(dff)
+}
+
 
 sp_Hnum_diff<-function(datframe){
   df<-datframe
@@ -137,8 +159,7 @@ samples_wide_fun<-function(df){
 }
 
 #-------------------Functions for backtransforming parameter values ---------------------
-
-
+# Back transform from log 
 back_trans_function_H_num_noH4<-function(df, var){
   df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
   df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
@@ -156,20 +177,21 @@ back_trans_function_H_num_noH4<-function(df, var){
   return(df_bt)
 }
 
-
-back_trans_function_sp_H_num<-function(df, var){
+# Not log transformed traits 
+back_function_H_num_noH4<-function(df, var){
   df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
   df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
   df_bt$H_num<-c("H1","H2","H3")
-  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
-                   exp(df_Hnum[1,4] + df_Hnum[3,4]),
-                   exp(df_Hnum[1,4] + df_Hnum[4,4]))
-  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
-                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
-                   exp(df_Hnum[1,5] + df_Hnum[4,5]))
-  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
-                   exp(df_Hnum[1,6] + df_Hnum[3,6]),
-                   exp(df_Hnum[1,6] + df_Hnum[4,6]))
+  df_bt$bt_CI05<-c(df_Hnum[1,4] + df_Hnum[2,4], 
+                   df_Hnum[1,4] + df_Hnum[3,4],
+                   df_Hnum[1,4] + df_Hnum[4,4])
+  df_bt$bt_CI50<-c(df_Hnum[1,5] + df_Hnum[2,5], 
+                   df_Hnum[1,5] + df_Hnum[3,5],
+                   df_Hnum[1,5] + df_Hnum[4,5])
+  df_bt$bt_CI95<-c(df_Hnum[1,6] + df_Hnum[2,6], 
+                   df_Hnum[1,6] + df_Hnum[3,6],
+                   df_Hnum[1,6] + df_Hnum[4,6])
   df_bt$trait <- var
   return(df_bt)
 }
+
