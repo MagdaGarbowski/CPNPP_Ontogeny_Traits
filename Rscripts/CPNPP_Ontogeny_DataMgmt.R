@@ -2,17 +2,24 @@
 ### Janurary 29, 2020
 ### 2017 Trait data - Traits through time 
 
-
 # (1) Create dataset with species calculations for SLA, LDMC, RMR, RDMC, RTD, SRL (for each sample)
 # (2) Create dataset with growth rates and root elongation (for each population (POP_ID))
 # (3) Create dataset with relative change for each trait (for each population (POP_ID))
 # (4) Create dataset with Plasticity Index through time (for each species) based on distances between avg. values at each timepoint x species 
 
 setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
-
 library(tidyr)
 library(data.table)
 source("Rscripts/Functions/Functions_DataMgmt.R")
+
+seed_weights<-read.csv("Data_Raw_TRY_Seedweights/traits_population_seedweights.csv")
+seed_weights<-seed_weights[,c("POP_ID","AVG_SEED_WEIGHT")]
+seed_weights$Tot_weight_avg <- seed_weights$AVG_SEED_WEIGHT
+seed_weights$H_num = 0.01
+seed_weights$Above_weight_avg = NA
+seed_weights$Below_weight_avg = NA
+seed_weights$RL_avg = 0.2
+seed_weights <- seed_weights[c("H_num","POP_ID","Above_weight_avg","Tot_weight_avg","Below_weight_avg","RL_avg")]
 
 # Load data 
 filedirectory = "Data_Raw/"
@@ -34,7 +41,10 @@ Trait_data [Trait_data$SAMPLE_ID == "VUOC_UTSE_IM_4_H2_B", "LWD"] <-0.0024
 Trait_data [Trait_data$SAMPLE_ID == "ACMI_UTNW_VE_2_H3_G", "LWD"] <-0.00075
 Trait_data [Trait_data$SAMPLE_ID == "ELTR_NMNW_C_18_H1_O", "LWD"] <-0.0021
 Trait_data [Trait_data$SAMPLE_ID == "MUPO_AZSE_SIT_8_H3_O", "LWD"] <-0.0005
-Trait_data [Trait_data$SAMPLE_ID == "PAMU_UTSW_CP_10_H3_G", "LWD"] <-0.001   
+Trait_data [Trait_data$SAMPLE_ID == "PAMU_UTSW_CP_10_H3_G", "LWD"] <-0.001  
+Trait_data [Trait_data$SAMPLE_ID == "PAMU_AZNC_WMR_2_H2_R", "CWD"] <-0.0005 
+Trait_data [Trait_data$SAMPLE_ID == "PAMU_AZNC_WMR_2_H2_R", "CWS"] <-0.005  
+Trait_data [Trait_data$SAMPLE_ID == "PAMU_UTEC_MC_10_H2_O", "CWD"] <-0.0004
 Trait_data [Trait_data$SAMPLE_ID == "ACMI_UTNW_VE_3_H3_O", "LWS"] <-0.0518 
 Trait_data [Trait_data$SAMPLE_ID == "ARTR_UTC_MC_6_H2_G", "LWS"] <-0.0120 
 Trait_data [Trait_data$SAMPLE_ID == "ARTR_UTSW_BJ_11_H2_G", "LWS"] <-0.0120 
@@ -61,13 +71,13 @@ Trait_data [Trait_data$SAMPLE_ID == "VUOC_AZSW_WB_1_H1_R", "TRANSP_DATE"] <-as.c
 Trait_data [Trait_data$SAMPLE_ID == "MACA_NMNW_FC_19_H4_G", "TRANSP_DATE"] <-as.character("7/31")
 Trait_data [Trait_data$SAMPLE_ID == "HEVI_NMNW_NC_7_H2_O", "HD"] <-as.character("7/27")
 
-
-
 # --------Check leaf weight dry (LWD) values and impute where missing and appropriate -----------# 
 # Maybe don't do this... often gives negative numbers? Just accept NA? 
 
 is.na(Trait_data$LWD)<-!(Trait_data$LWD) # Make zeros NA - this is okay because will assign based on saturated weight next (i.e. there was actually a leaf there)
 table(is.na(Trait_data$LWD[(Trait_data$GrowthForm == "FORB" & Trait_data$H_num == "H1")]))  # out of 120 values 61 are true 
+table(is.na(Trait_data$CWD[(Trait_data$GrowthForm == "FORB" & Trait_data$H_num == "H1")]))  # out of 120 values 26 are true 
+table(is.na(Trait_data %in% c("CWD", "LWD")[(Trait_data$GrowthForm == "FORB" & Trait_data$H_num == "H1")]))  # out of 120 values 61 are true 
 table(is.na(Trait_data$LWD[(Trait_data$GrowthForm == "FORB" & Trait_data$H_num %in% c("H2","H3","H4"))]))  # out of 327 values, 12 have NA, these will be imputed
 table(is.na(Trait_data$LWD[(Trait_data$GrowthForm == "GRASS" & Trait_data$H_num == "H1")]))  # out of 65 values, 1 are NA, will be imputed
 table(is.na(Trait_data$LWD[(Trait_data$GrowthForm == "GRASS" & Trait_data$H_num %in% c("H2","H3","H4"))]))  # All have values? really??? 
@@ -145,6 +155,17 @@ subset(Trait_data, Trait_data[,"SLA"] >100)
 Trait_data$SLA[Trait_data$SLA > 400] <- NA 
 Trait_data$SLA[Trait_data$SLA == 0] <- NA 
 
+# ---------------------------------------- SLA based on cotyledons and leaves for H1 forbs ------------------------
+Trait_data$SLA_w_cots<-ifelse((Trait_data$GrowthForm == "FORB" & Trait_data$H_num %in% c("H1","H2")),
+                              ((Trait_data$Total.Of.PROJ_AREA_AG/rowSums(Trait_data[,c("CWD","LWD")], na.rm=TRUE))/10),
+                              Trait_data$SLA)
+
+Trait_data$SLA_w_cots[Trait_data$SLA_w_cots > 400] <- NA 
+Trait_data$SLA_w_cots[Trait_data$SLA_w_cots == 0] <- NA
+
+# View(Trait_data[,c("SAMPLE_ID","SLA","SLA_w_cots")])
+# View(Trait_data[,c("SAMPLE_ID","Total.Of.PROJ_AREA_AG","COTS_TOTAL", "LEAF_TOTAL","LEAF","LEAVES_TOTAL","CWD","LWD","SAMPLE_ID","SLA","SLA_w_cots")])
+
 
 # ---------------------------------------------- LDMC -------------------------------------------------------------
 # Select "max" weight from LWF_A or LWS_A, LWF_B or LWS_B), BWS or BWF... if NA on those three then do LWS and LWD 
@@ -180,6 +201,16 @@ Trait_data$LDMC<-ifelse(Trait_data$SAMPLE_ID %in% c("ACMI_UTNW_CCC_4_H4_R"),
 Leaf_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","LWS","L.SFW","LWD","LWS_A","LWS_B","BWS_A","LWD_tmp", "LWD_A", "LWD_B","BWD_A","LW_Max_Sum","LDMC")])
 Trait_data$LDMC[Trait_data$LDMC > 0.8] <- NA 
 Trait_data$LDMC<-Trait_data$LDMC * 1000
+
+# ------------------------------------------ LDMC with cotelydons for H1 and H2 Forbs ---------------------
+Trait_data$LDMC_w_cots<-ifelse((Trait_data$GrowthForm == "FORB" & Trait_data$H_num %in% c("H1","H2")),
+                              ((rowSums(Trait_data[,c("CWD","LWD")], na.rm = TRUE))/(rowSums(Trait_data[,c("CWS","LWS")], na.rm = TRUE))*1000),
+                              (Trait_data$LDMC))
+
+
+# View(Trait_data[,c("SAMPLE_ID","SLA","SLA_w_cots")])
+# View(Trait_data[,c("SAMPLE_ID","Total.Of.PROJ_AREA_AG","CWS","LWS","CWD","LWD","SAMPLE_ID","LDMC","LDMC_w_cots")])
+Trait_data$LDMC_w_cots[Trait_data$LDMC_w_cots > 400] <- NA 
 
 # ------------------------------------------ SRL (m g^-1) -------------------------------------------------
 
@@ -221,7 +252,7 @@ Trait_data$RASARatio[Trait_data$RASARatio > 40] <- NA
 
 # ------------------------------ Calculate Population Avgs ------------------------
 
-Trait_avg_pop_df<-lapply(c("SumOfLength.cm.","SumOfAvgDiam.mm.","HT","SLA","LDMC", "RMR","SRL","RDMC","RTD","RASARatio"), function (y) 
+Trait_avg_pop_df<-lapply(c("SumOfLength.cm.","SumOfAvgDiam.mm.","HT","SLA","LDMC", "RMR","SRL","RDMC","RTD","RASARatio", "SLA_w_cots", "LDMC_w_cots"), function (y) 
   agg_mean_fun(Trait_data, y, "H_num","POP_ID", c("H_num","POP_ID","value","trait")))
 
 Trait_avg_pop_df<-do.call(rbind, Trait_avg_pop_df)
@@ -282,16 +313,18 @@ agg_ls_RGR<-lapply(c("Above_weight_sum","Tot_weight_sum", "RWD","SumOfLength.cm.
 # Merge into one dataset
 agg_df<-do.call(cbind, agg_ls_RGR)
 agg_df<-agg_df[ c(1,2,3,7,11,15) ] # column names are similar so indexing 
-colnames(agg_df)<-c("H_num","POP_ID","Above_weight_avg","Tot_weight_avg","Below_weight_avg","RE_avg")
+colnames(agg_df)<-c("H_num","POP_ID","Above_weight_avg","Tot_weight_avg","Below_weight_avg","RL_avg")
 GrowthRates_Traits2017_3<-agg_df
 GrowthRates_Traits2017_3$H_num<-as.numeric(as.character(GrowthRates_Traits2017_3$H_num))
 
+GrowthRates_Traits2017_3<-rbind(GrowthRates_Traits2017_3,seed_weights)
+GrowthRates_Traits2017_3<-GrowthRates_Traits2017_3[order( GrowthRates_Traits2017_3[,2], GrowthRates_Traits2017_3[,1] ),]
+rownames(GrowthRates_Traits2017_3)<-NULL
+
 Growth_calc<- by(GrowthRates_Traits2017_3, GrowthRates_Traits2017_3$POP_ID, function(df){
-  df$RGR_Above_ln = growth_function(df$Above_weight_avg, df$H_num )
-  df$RGR_Below_ln = growth_function(df$Below_weight_avg, df$H_num)
   df$RGR_Tot_ln = growth_function(df$Tot_weight_avg, df$H_num)
-  df$RER_ln = growth_function(df$RE_avg, df$H_num)
-  df$RER = growth_function_not_log(df$RE_avg, df$H_num)
+  df$RER_ln = growth_function(df$RL_avg, df$H_num)
+  df$RER = growth_function_not_log(df$RL_avg, df$H_num)
   df$RGR_Tot = growth_function_not_log(df$Tot_weight_avg, df$H_num)
   df
 })
@@ -301,15 +334,17 @@ Growth_calc_df<-do.call(rbind, Growth_calc)
 GrowthRates_Traits2017_3<-pop_id_function(Growth_calc_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
 GrowthRates_Traits2017_3$Days<-GrowthRates_Traits2017_3$H_num
 levels(GrowthRates_Traits2017_3$H_num)[(GrowthRates_Traits2017_3$H_num) %in% c("10","24","42","84")]<-c("H1","H2","H3","H4")
+rownames(GrowthRates_Traits2017_3)<-NULL
+GrowthRates_Traits2017_3[!GrowthRates_Traits2017_3$H_num  == 0.01, ]
 
 # -------------------- Combine growth rate data and trait population data --------------------
 
 Pop_avg_data_2<- reshape(Trait_avg_pop_df_3, idvar = c("POP_ID","H_num","GrowthForm", "SPECIES"), timevar = "trait", direction = "wide")
 ag2<-Pop_avg_data_2
 # Data transformations to improve normality 
-cols<- c("value.SumOfLength.cm.","value.SumOfAvgDiam.mm.","value.HT","value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD","value.RASARatio")
+cols<- c("value.SumOfLength.cm.","value.SumOfAvgDiam.mm.","value.HT","value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD","value.RASARatio", "value.SLA_w_cots","value.LDMC_w_cots")
 ag2[cols]<-log(ag2[cols])
-colnames(ag2)[5:14]<-c("ln.SumOfLength.cm.","ln.value.SumOfAvgDiam.mm.","ln.HT", "ln.SLA", "ln.LDMC", "ln.RMR", "ln.SRL", "ln.RDMC", "ln.RTD","value.RASARatio")
+colnames(ag2)[5:16]<-c("ln.SumOfLength.cm.","ln.value.SumOfAvgDiam.mm.","ln.HT", "ln.SLA", "ln.LDMC", "ln.RMR", "ln.SRL", "ln.RDMC", "ln.RTD","ln.RASARatio", "ln.SLA_w_cots","ln.LDMC_w_cots")
 
 Pop_avg_data_3<-merge(Pop_avg_data_2,ag2, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
 Pop_avg_data_wrates<-merge(Pop_avg_data_3,GrowthRates_Traits2017_3, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
@@ -317,11 +352,11 @@ Pop_avg_data_wrates<-merge(Pop_avg_data_3,GrowthRates_Traits2017_3, by = c("H_nu
 #Back into long format
 Pop_avg_data_wrates_long<-reshape(Pop_avg_data_wrates, 
   direction = "long",
-  varying = names(Pop_avg_data_wrates)[5:34],
+  varying = names(Pop_avg_data_wrates)[5:36],
   v.names = "value",
   idvar = c("H_num","POP_ID"),
   timevar = "trait",
-  times = names(Pop_avg_data_wrates)[5:34])
+  times = names(Pop_avg_data_wrates)[5:36])
 
 rownames(Pop_avg_data_wrates_long) <- NULL
 
