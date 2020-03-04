@@ -123,6 +123,7 @@ SLA_sps_Hnum_splits<-split(SLA_sp_samples, paste(SLA_sp_samples$species))
 SLA_dfs<-lapply(SLA_sps_Hnum_splits, samples_wide_fun)
 SLA_sp_Hnum_diffs<-lapply(SLA_dfs, sp_Hnum_diff)
 SLA_sp_Hnum_diffs_df<-do.call(rbind, SLA_sp_Hnum_diffs)
+
 ################################################################################
 interactions = lapply(all_mods_noH4, function(x) {
     ans = as.data.frame(x)
@@ -137,7 +138,10 @@ interactions = mapply(function(x, nm) {colnames(x) = nm; x},
 tmp = lapply(interactions, diff_by_group)
 
 ## Summarize it all
-lapply(tmp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975)))))
+ans = lapply(tmp, summarize_diffs, p = c(0.025, 0.5, 0.975))
+
+
+lapply(ans, function(x) lapply(x, function(y) y[apply(y, 1, includes_zero),]))
 
 ################################################################################
 
@@ -410,3 +414,17 @@ plot(all_mods_noH4$RGR_Tot_ln, pars = "beta_sp_Hnum")
 names(all_mods_noH4$RER_ln)[grep("beta_sp_Hnum",names(all_mods_noH4$RER_ln))]<-beta_names_noh4
 plot(all_mods_noH4$RER_ln, pars = "beta_sp_Hnum")
 
+
+################################################################################
+y_stars = rstan::extract(all_mods_noH4[[1]], pars = "y_star")
+
+
+
+for(i in 1:25){
+    plot(density(y_stars$y_star[,i]))
+    abline(h = )
+               }
+
+
+max(y_stars$y_star)
+    

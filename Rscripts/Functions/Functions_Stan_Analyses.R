@@ -70,24 +70,43 @@ prep_data = function(df){
 }
 
 # Difference function
-diff_by_group = function(samples, diff_var = "_H[0-9]")
+diff_by_group = function(samples,
+                         name_var_num = 1, diff_var_num = 2, split_char = "_",
+                         use_names = TRUE, names = NULL)
 {
-    ## browser()
-    grps = factor(gsub(diff_var, "", colnames(samples)))
+    nms = do.call(rbind, strsplit(colnames(samples), split_char))
+    grps = factor(nms[,diff_var_num])
+
+    if(use_names)
+        names = levels(factor(nms[,name_var_num]))
+    
     ans = lapply(seq_along(levels(grps)), function(i){
-        pairwise_diff(samples[,as.integer(grps) == i])
+        pairwise_diff(samples[,as.integer(grps) == i], names)
     })
+        
     names(ans) = levels(grps)
     ans
 }
 
-pairwise_diff = function(samples)
+pairwise_diff = function(samples, var_names = NULL)
 {
     i = combn(seq(ncol(samples)), 2, simplify = FALSE)
     ans = lapply(i, function(j) samples[,j[1]] - samples[,j[2]])
-    names(ans) = sapply(i, paste, collapse="-")
+    if(!is.null(var_names)){
+        names(ans) = sapply(i, function(j) paste(var_names[j], collapse="-"))
+    } else {
+        names(ans) = sapply(i, paste, collapse="-")
+    }
     ans
 }
+
+summarize_diffs = function(x, FUN = quantile, only_sig_zero = FALSE, ...){
+    ans = lapply(x, function(y) t(sapply(y, FUN, ...)))
+    if(only
+}
+
+includes_zero = function(x)
+    all(x < 0) | all(x > 0)
 
 
 # -------------------------- Functions to estimate differences among groups ----------------------
