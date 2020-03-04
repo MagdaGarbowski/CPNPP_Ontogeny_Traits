@@ -89,6 +89,10 @@ pairwise_diff = function(samples)
     ans
 }
 
+includes_zero = function (x){
+ all(x<0) | all(x>0) 
+}
+
 
 # -------------------------- Functions to estimate differences among groups ----------------------
 Hnum_difference_function_noH4<-function(df){
