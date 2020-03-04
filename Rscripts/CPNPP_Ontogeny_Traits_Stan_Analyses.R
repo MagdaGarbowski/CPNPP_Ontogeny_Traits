@@ -3,6 +3,7 @@ if(Sys.info()["login"] == "MagdaGarbowski")
 
 TraitData_Pop_Avg_2017<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
 Pop_avg_data_wrates<-read.csv("Data_Generated/TraitData_PopAvg_wRates_2017.csv")
+TraitData_Ind_2017<-read.csv("Data_Generated/TraitData_2017.csv")
 
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
@@ -14,26 +15,26 @@ library(tidyr)
 
 bayesplot::color_scheme_set("brightblue")
 
-Pop_avg_data_wrates$H_num<-as.character(as.factor(Pop_avg_data_wrates$H_num))
-# Pop_avg_data_wrates$value<-ifelse((Pop_avg_data_wrates$GrowthForm %in% c("FORB","SHRUB", "GRASS") & Pop_avg_data_wrates$H_num == "H1" & Pop_avg_data_wrates$trait %in% c("ln.SLA", "ln.LDMC", "value.SLA","value.LDMC")), NA, Pop_avg_data_wrates$value)
-
-# Data for variance estimates of traits
-# na.omit_traits<-na.omit.fun(TraitData_Pop_Avg_2017, c("POP_ID", "value","trait","SPECIES"))
-# traits_stan_df<-mk_data_traitvar_function(na.omit_traits)
+# Data with individuals for full model 
+# TraitData_Ind_2017$H_num<-as.character(as.factor(TraitData_Ind_2017$H_num))
+# na.omit_ind<-na.omit.fun(TraitData_Ind_2017, c("POP_ID", "value","trait","SPECIES", "H_num"))
+# Traits_ind<-na.omit_ind[na.omit_ind$trait %in% c ("RDMC","ln.RTD","RMR","ln.SRL", "ln.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "LDMC_w_cots","ln.RASARatio"),]
+# Traits_ind_noH4<-Traits_ind[!Traits_ind$H_num %in% c("H4"),]
+# Trait_ind_splits_noH4 = split(Traits_ind_noH4, paste(Traits_ind_noH4$trait))
+# data_ind_noH4<-lapply(Trait_ind_splits_noH4, prep_data)
 
 # Data for full model - mean estimates of traits by species and time 
-na.omit_species<-na.omit.fun(Pop_avg_data_wrates, c("POP_ID", "value","trait","SPECIES", "H_num"))
-Traits_all<-na.omit_species[na.omit_species$trait %in% c ("ln.RDMC","ln.RTD","ln.RMR","ln.SRL", "ln.value.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "ln.LDMC_w_cots","ln.RASARatio","RER_ln","RGR_Tot_ln"),] 
+Pop_avg_data_wrates$H_num<-as.character(as.factor(Pop_avg_data_wrates$H_num))
+na.omit_pop<-na.omit.fun(Pop_avg_data_wrates, c("POP_ID", "value","trait","SPECIES", "H_num"))
+Traits_all<-na.omit_pop[na.omit_pop$trait %in% c ("ln.RDMC","ln.RTD","ln.RMR","ln.SRL", "ln.value.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "ln.LDMC_w_cots","ln.RASARatio","RER","RGR_Tot"),] 
+Traits_all[Traits_all$trait == "RGR_Tot",]$value<-Traits_all[Traits_all$trait == "RGR_Tot",]$value*1000
 
 Traits_all_noH4<-Traits_all[!Traits_all$H_num %in% c ("H4"),] 
 Trait_splits_noH4 = split(Traits_all_noH4, paste(Traits_all_noH4$trait))
-
-################################################################################
-
 data_noH4<-lapply(Trait_splits_noH4, prep_data)
 
-
-# Full model (Species and H_num together) --------------------------------------#
+################################################################################
+# Full model (Species and H_num together) 
 # Will still need to add random effect of population 
 mod = stan_model("stan_models/All_Traits_Random_Effects.stan")
   
@@ -46,16 +47,6 @@ mods_function_all <- function(df,
   sampling(mod, df, iter = iter, cores = cores, ...) 
 }
 
-# The new model does not sample as efficiently as the matrix
-# representation, so higher adapt delta and iterations are needed
-
-# all_mods_full = lapply(data_full, mods_function_all, mod = mod,
-#                       pars = c("beta_Hnum_raw", "beta_sp_raw",
-#                                "beta_pop_raw", "beta_sp_Hnum_raw"),
-#                       include = FALSE,
-#                       warmup = 1500, iter = 2000,
-#                       control = list(adapt_delta = 0.95))  # Bulk Effective Sample Size too low 
-
 all_mods_noH4 = lapply(data_noH4, mods_function_all, mod = mod,
                        pars = c("beta_Hnum_raw", "beta_sp_raw",
                                 "beta_pop_raw", "beta_sp_Hnum_raw"),
@@ -64,11 +55,10 @@ all_mods_noH4 = lapply(data_noH4, mods_function_all, mod = mod,
                        control = list(adapt_delta = 0.95)) # Divergent transitions and Bulk Effective Sample Size too low 
 
 # Estimate differences between H_nums for all traits ----------------------------
-
 H_num_diff_SLA<-Hnum_difference_function_noH4(all_mods_noH4$ln.SLA_w_cots)
 H_num_diff_LDMC<-Hnum_difference_function_noH4(all_mods_noH4$ln.LDMC_w_cots)
-H_num_diff_RER<-Hnum_difference_function_noH4(all_mods_noH4$RER_ln)
-H_num_diff_RGR<-Hnum_difference_function_noH4(all_mods_noH4$RGR_Tot_ln)
+H_num_diff_RER<-Hnum_difference_function_noH4(all_mods_noH4$RER)
+H_num_diff_RGR<-Hnum_difference_function_noH4(all_mods_noH4$RGR_Tot)
 H_num_diff_RASA<-Hnum_difference_function_noH4(all_mods_noH4$ln.RASARatio)
 H_num_diff_RMR<-Hnum_difference_function_noH4(all_mods_noH4$ln.RMR)
 H_num_diff_SRL<-Hnum_difference_function_noH4(all_mods_noH4$ln.SRL)
@@ -79,26 +69,21 @@ H_num_diff_RDIam<-Hnum_difference_function_noH4(all_mods_noH4$ln.value.SumOfAvgD
 # Back transformed values for plotting (H_num main effects) --------------------------------------------
 SLA_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SLA_w_cots, "SLA")
 LDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.LDMC_w_cots, "LDMC")
-RGR_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$RGR_Tot_ln, "RGR")
-RER_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$RER_ln, "RER")
 RASA_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH4$ln.RASARatio, "RASA")
 RMR_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RMR, "RMF")
 
 Rdiam_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.value.SumOfAvgDiam.mm., "R.Diam")
-RDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RDMC, "R.Diam")
+RDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RDMC, "RDMC")
 RTD_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RTD, "RTD")
 SRL_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SRL, "SRL")
 
-# Get names  ----------------------------------------------------------# 
+RGR_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RGR_Tot, "RGR")
+RER_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RER, "RER")
 
-## beta_names_noh4<-unique(Traits_all_noH4[,c("SPECIES", "H_num")])
-## beta_names_noh4$names_noh4<-paste(beta_names_noh4$SPECIES, beta_names_noh4$H_num, sep = "_")
-## beta_names_noh4<- beta_names_noh4[order(beta_names_noh4$names_noh4),]
-## beta_names_noh4<-beta_names_noh4$names_noh4
 
-# Not quite right - the order is based on creating a factor but it for
-# each split, so if a species or H_num is not present in one, all the
-# levels are shifted. This is how you would do for one
+################################################################################
+# Get names 
+# This is how you would do for one
 # beta_names = levels(factor(paste(Traits_all_noH4$SPECIES, Traits_all_noH4$H_num)))
 
 # So, to get the correct names for each model, run this
@@ -112,19 +97,6 @@ tmp = lapply(seq_along(inter_names), function(i) {
     x
     })
 
-# Estimate differences between H_num for given species x trait  --------------------------
-# Come back and figure out how to make this more effecient
-
-SLA_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.SLA_w_cots, pars = "beta_sp_Hnum"))
-## names(SLA_sp_Hnum)[grep("beta_sp_Hnum",names(SLA_sp_Hnum))]<-beta_names_noh4
-SLA_sp_samples<-sample_species_function(SLA_sp_Hnum)
-SLA_sps_Hnum_splits<-split(SLA_sp_samples, paste(SLA_sp_samples$species))
-
-SLA_dfs<-lapply(SLA_sps_Hnum_splits, samples_wide_fun)
-SLA_sp_Hnum_diffs<-lapply(SLA_dfs, sp_Hnum_diff)
-SLA_sp_Hnum_diffs_df<-do.call(rbind, SLA_sp_Hnum_diffs)
-
-################################################################################
 interactions = lapply(all_mods_noH4, function(x) {
     ans = as.data.frame(x)
     ans[,grep("beta_sp_Hnum", colnames(ans))]
@@ -136,119 +108,23 @@ interactions = mapply(function(x, nm) {colnames(x) = nm; x},
 
 # big list of lists with all differences for each species by every h_num
 tmp = lapply(interactions, diff_by_group)
-
 ## Summarize it all
 ans = lapply(tmp, summarize_diffs, p = c(0.025, 0.5, 0.975))
-
 
 lapply(ans, function(x) lapply(x, function(y) y[apply(y, 1, includes_zero),]))
 
 ################################################################################
+ans = lapply(tmp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
 
+# Breaking it down to know whats going on 
+#### Run for sps at H_num
+tmp_sp_comp<-lapply(interactions, diff_by_group, diff_var = "[A-Z]{4}_")
+sp_Hnum_out<-lapply(tmp_sp_comp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
 
+lapply(ans, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
 
-LDMC_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.LDMC_w_cots, pars = "beta_sp_Hnum"))
-names(LDMC_sp_Hnum)[grep("beta_sp_Hnum",names(LDMC_sp_Hnum))]<-beta_names_noh4
-LDMC_sp_samples<-sample_species_function(LDMC_sp_Hnum)
-LDMC_sps_Hnum_splits<-split(LDMC_sp_samples, paste(LDMC_sp_samples$species))
+################################################################################
 
-LDMC_dfs<-lapply(LDMC_sps_Hnum_splits, samples_wide_fun)
-LDMC_sp_Hnum_diffs<-lapply(LDMC_dfs, sp_Hnum_diff)
-LDMC_sp_Hnum_diffs_df<-do.call(rbind, LDMC_sp_Hnum_diffs)
-
-SRL_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.SRL, pars = "beta_sp_Hnum"))
-names(SRL_sp_Hnum)[grep("beta_sp_Hnum",names(SRL_sp_Hnum))]<-beta_names_noh4
-SRL_sp_samples<-sample_species_function(SRL_sp_Hnum)
-SRL_sps_Hnum_splits<-split(SRL_sp_samples, paste(SRL_sp_samples$species))
-
-SRL_dfs<-lapply(SRL_sps_Hnum_splits, samples_wide_fun)
-SRL_sp_Hnum_diffs<-lapply(SRL_dfs, sp_Hnum_diff)
-SRL_sp_Hnum_diffs_df<-do.call(rbind, SRL_sp_Hnum_diffs)
-
-RDMC_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.RDMC, pars = "beta_sp_Hnum"))
-names(RDMC_sp_Hnum)[grep("beta_sp_Hnum",names(RDMC_sp_Hnum))]<-beta_names_noh4
-RDMC_sp_samples<-sample_species_function(RDMC_sp_Hnum)
-RDMC_sps_Hnum_splits<-split(RDMC_sp_samples, paste(RDMC_sp_samples$species))
-
-RDMC_dfs<-lapply(RDMC_sps_Hnum_splits, samples_wide_fun)
-RDMC_sp_Hnum_diffs<-lapply(RDMC_dfs, sp_Hnum_diff)
-RDMC_sp_Hnum_diffs_df<-do.call(rbind, RDMC_sp_Hnum_diffs)
-
-RTD_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.RTD, pars = "beta_sp_Hnum"))
-names(RTD_sp_Hnum)[grep("beta_sp_Hnum",names(RTD_sp_Hnum))]<-beta_names_noh4
-RTD_sp_samples<-sample_species_function(RTD_sp_Hnum)
-RTD_sps_Hnum_splits<-split(RTD_sp_samples, paste(RTD_sp_samples$species))
-
-RTD_dfs<-lapply(RTD_sps_Hnum_splits, samples_wide_fun)
-RTD_sp_Hnum_diffs<-lapply(RTD_dfs, sp_Hnum_diff)
-RTD_sp_Hnum_diffs_df<-do.call(rbind, RTD_sp_Hnum_diffs)
-
-RDiam_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.value.SumOfAvgDiam.mm., pars = "beta_sp_Hnum"))
-names(RDiam_sp_Hnum)[grep("beta_sp_Hnum",names(RDiam_sp_Hnum))]<-beta_names_noh4
-RDiam_sp_samples<-sample_species_function(RDiam_sp_Hnum)
-RDiam_sps_Hnum_splits<-split(RDiam_sp_samples, paste(RDiam_sp_samples$species))
-
-RDiam_dfs<-lapply(RDiam_sps_Hnum_splits, samples_wide_fun)
-RDiam_sp_Hnum_diffs<-lapply(RDiam_dfs, sp_Hnum_diff)
-RDiam_sp_Hnum_diffs_df<-do.call(rbind, RDiam_sp_Hnum_diffs)
-
-RMR_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.RMR, pars = "beta_sp_Hnum"))
-names(RMR_sp_Hnum)[grep("beta_sp_Hnum",names(RMR_sp_Hnum))]<-beta_names_noh4
-RMR_sp_samples<-sample_species_function(RMR_sp_Hnum)
-RMR_sps_Hnum_splits<-split(RMR_sp_samples, paste(RMR_sp_samples$species))
-
-RMR_dfs<-lapply(RMR_sps_Hnum_splits, samples_wide_fun)
-RMR_sp_Hnum_diffs<-lapply(RMR_dfs, sp_Hnum_diff)
-RMR_sp_Hnum_diffs_df<-do.call(rbind, RMR_sp_Hnum_diffs)
-
-RASA_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$ln.RASARatio, pars = "beta_sp_Hnum"))
-names(RASA_sp_Hnum)[grep("beta_sp_Hnum",names(RASA_sp_Hnum))]<-beta_names_noh4
-RASA_sp_samples<-sample_species_function(RASA_sp_Hnum)
-RASA_sps_Hnum_splits<-split(RASA_sp_samples, paste(RASA_sp_samples$species))
-
-RASA_dfs<-lapply(RASA_sps_Hnum_splits, samples_wide_fun)
-RASA_sp_Hnum_diffs<-lapply(RASA_dfs, sp_Hnum_diff)
-RASA_sp_Hnum_diffs_df<-do.call(rbind, RASA_sp_Hnum_diffs)
-
-RGR_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$RGR_Tot_ln, pars = "beta_sp_Hnum"))
-names(RGR_sp_Hnum)[grep("beta_sp_Hnum",names(RGR_sp_Hnum))]<-beta_names_noh4
-RGR_sp_samples<-sample_species_function(RGR_sp_Hnum)
-RGR_sps_Hnum_splits<-split(RGR_sp_samples, paste(RGR_sp_samples$species))
-
-RGR_dfs<-lapply(RGR_sps_Hnum_splits, samples_wide_fun)
-RGR_sp_Hnum_diffs<-lapply(RGR_dfs, sp_Hnum_diff)
-RGR_sp_Hnum_diffs_df<-do.call(rbind, RGR_sp_Hnum_diffs)
-
-RER_sp_Hnum<-as.data.frame(rstan::extract(all_mods_noH4$RER_ln, pars = "beta_sp_Hnum"))
-names(RER_sp_Hnum)[grep("beta_sp_Hnum",names(RER_sp_Hnum))]<-beta_names_noh4
-RER_sp_samples<-sample_species_function(RER_sp_Hnum)
-RER_sps_Hnum_splits<-split(RER_sp_samples, paste(RER_sp_samples$species))
-
-RER_dfs<-lapply(RER_sps_Hnum_splits, samples_wide_fun)
-RER_sp_Hnum_diffs<-lapply(RER_dfs, sp_Hnum_diff)
-RER_sp_Hnum_diffs_df<-do.call(rbind, RER_sp_Hnum_diffs)
-
-
-#
-#
-#
-#
-# STOP HERE 
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
 
 # Back transformed values for plotting H_num x species (RER only) -------------------------------------------
 df_Hnum_sp<-as.data.frame(summary(all_mods_noH4$RER_ln, 
@@ -321,8 +197,8 @@ RootDiam_plot<-plot_Hnum(Rdiam_bt_Hnum, c(0.225, 0.3), "Root Diameter", "mm")
 RMR_plot<-plot_Hnum(RMR_bt_Hnum, c(0.19, 0.39), "Root:Shoot Mass Ratio", " ")
 RASA_plot<-plot_Hnum(RASA_bt_Hnum, c(0.5, 1.5), "Root:Shoot Area Ratio", " ")
 
-RER_plot<-plot_Hnum(RER_bt_Hnum, c(0.9, 1.6), "Root elongation rate", expression(paste("cm day"^{-1}))) + annotate("text", x = c(1,2,3), y = c(1.55,1.25,1.2), label = c("a","b","b"), size = 4.5)
-RGR_plot<-plot_Hnum(RGR_bt_Hnum, c(1, 1.175), "Relative growth rate", expression(paste("g day"^{-1}))) + annotate("text", x = c(1,2,3), y = c(1.10,1.12,1.135), label = c("b","ab","a"), size = 4.5)
+RER_plot<-plot_Hnum(RER_bt_Hnum, c(0, 8), "Root elongation rate", expression(paste("cm day"^{-1}))) + annotate("text", x = c(1,2,3), y = c(4.3,4.65,7.65), label = c("a","a","b"), size = 4.5)
+RGR_plot<-plot_Hnum(RGR_bt_Hnum, c(0,2), "Relative growth rate", expression(paste("mg day"^{-1}))) + annotate("text", x = c(1,2,3), y = c(0.3,0.7,1.7), label = c("a","a","b"), size = 4.5)
 
 # Plotting RER for species ----------------------------------------------------------------------------
 df_bt_Hnum_Sp$Sp<-factor(df_bt_Hnum_Sp$Sp, levels = c("ACMI","ARTR","HEVI","PAMU",
@@ -337,24 +213,7 @@ facet_wrap(.~Sp, ncol = 4) +
 ggtitle("Root elongation rates")+
 theme_bw()
 
-# Plot against "regular" means because RER should increase not decrease through time ------------
-levels(Pop_avg_data_wrates$trait)
-Pop_avg_data_wrates_RER<-Pop_avg_data_wrates[Pop_avg_data_wrates$trait == "RER",]
-Pop_avg_data_wrates_RER<-Pop_avg_data_wrates_RER[!Pop_avg_data_wrates_RER$H_num == "H4",]
 
-Sp_avg_data_wrates_RER<-ddply(Pop_avg_data_wrates_RER, c("H_num", "SPECIES"), summarise,
-                              N    = length(value),
-                              mean = mean(value),
-                              sd   = sd(value),
-                              se   = sd / sqrt(N))
-
-RER_fig_raw<-ggplot(Sp_avg_data_wrates_RER, aes(x = H_num, y = mean)) + geom_point() + 
-  geom_errorbar(aes(ymin =  mean-se, ymax = mean+se), size = 0.5, width = 0.3)+ 
-  scale_x_discrete(labels = c("10","24","42"))+
-  labs(x = "Days", y = "Root elongation rate (cm/day)")+
-  facet_wrap(.~SPECIES, ncol = 4) + 
-  ggtitle("Root elongation rates")+
-  theme_bw()
 
 # Exporting plots ------------------------------------------------------------------
 pdf("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/Output/Figures/Trait_H_num_Figs.pdf", height = 10, width = 7)
@@ -408,11 +267,11 @@ plot(all_mods_noH4$ln.RMR, pars = "beta_sp_Hnum")
 names(all_mods_noH4$ln.RASARatio)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.RASARatio))]<-beta_names_noh4
 plot(all_mods_noH4$ln.RASARatio, pars = "beta_sp_Hnum")
 
-names(all_mods_noH4$RGR_Tot_ln)[grep("beta_sp_Hnum",names(all_mods_noH4$RGR_Tot_ln))]<-beta_names_noh4
-plot(all_mods_noH4$RGR_Tot_ln, pars = "beta_sp_Hnum")
+names(all_mods_noH4$RGR_Tot)[grep("beta_sp_Hnum",names(all_mods_noH4$RGR_Tot))]<-beta_names_noh4
+plot(all_mods_noH4$RGR_Tot, pars = "beta_sp_Hnum")
 
-names(all_mods_noH4$RER_ln)[grep("beta_sp_Hnum",names(all_mods_noH4$RER_ln))]<-beta_names_noh4
-plot(all_mods_noH4$RER_ln, pars = "beta_sp_Hnum")
+names(all_mods_noH4$RER)[grep("beta_sp_Hnum",names(all_mods_noH4$RER))]<-beta_names_noh4
+plot(all_mods_noH4$RER, pars = "beta_sp_Hnum")
 
 
 ################################################################################
