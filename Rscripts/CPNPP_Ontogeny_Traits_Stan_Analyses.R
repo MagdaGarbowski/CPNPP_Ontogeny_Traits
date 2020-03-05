@@ -1,9 +1,7 @@
 if(Sys.info()["login"] == "MagdaGarbowski")
     setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
 
-TraitData_Pop_Avg_2017<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
 Pop_avg_data_wrates<-read.csv("Data_Generated/TraitData_PopAvg_wRates_2017.csv")
-TraitData_Ind_2017<-read.csv("Data_Generated/TraitData_2017.csv")
 
 source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(rstan)
@@ -26,7 +24,7 @@ bayesplot::color_scheme_set("brightblue")
 # Data for full model - mean estimates of traits by species and time 
 Pop_avg_data_wrates$H_num<-as.character(as.factor(Pop_avg_data_wrates$H_num))
 na.omit_pop<-na.omit.fun(Pop_avg_data_wrates, c("POP_ID", "value","trait","SPECIES", "H_num"))
-Traits_all<-na.omit_pop[na.omit_pop$trait %in% c ("ln.RDMC","ln.RTD","ln.RMR","ln.SRL", "ln.value.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "ln.LDMC_w_cots","ln.RASARatio","RER","RGR_Tot"),] 
+Traits_all<-na.omit_pop[na.omit_pop$trait %in% c ("ln.RDMC","ln.RTD","ln.RMR","ln.SRL", "ln.value.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "ln.LDMC_w_cots","ln.RASARatio","RER_ln","RGR_Tot_ln"),] 
 Traits_all[Traits_all$trait == "RGR_Tot",]$value<-Traits_all[Traits_all$trait == "RGR_Tot",]$value*1000
 
 Traits_all_noH4<-Traits_all[!Traits_all$H_num %in% c ("H4"),] 
@@ -36,7 +34,7 @@ data_noH4<-lapply(Trait_splits_noH4, prep_data)
 ################################################################################
 # Full model (Species and H_num together) 
 # Will still need to add random effect of population 
-mod = stan_model("stan_models/All_Traits_Random_Effects.stan")
+mod = stan_model("stan_models/All_Traits_Random_Effects_HS.stan")
   
 mods_function_all <- function(df,
                           mod_file = "stan_models/All_Traits_Random_Effects.stan",
@@ -83,8 +81,7 @@ RER_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RER, "RER")
 
 ################################################################################
 # Get names 
-# This is how you would do for one
-# beta_names = levels(factor(paste(Traits_all_noH4$SPECIES, Traits_all_noH4$H_num)))
+# For one: beta_names = levels(factor(paste(Traits_all_noH4$SPECIES, Traits_all_noH4$H_num)))
 
 # So, to get the correct names for each model, run this
 inter_names = lapply(Trait_splits_noH4, function(df)
@@ -103,71 +100,74 @@ interactions = lapply(all_mods_noH4, function(x) {
     })
 
 # apply the names again
-interactions = mapply(function(x, nm) {colnames(x) = nm; x},
+interactions2 = mapply(function(x, nm) {colnames(x) = nm; x},
                       x = interactions, nm = inter_names, SIMPLIFY = FALSE)
 
-# big list of lists with all differences for each species by every h_num
-tmp = lapply(interactions, diff_by_group)
-## Summarize it all
-ans = lapply(tmp, summarize_diffs, p = c(0.025, 0.5, 0.975))
+# big list of lists with all differences for species x h_num effects 
+tmp_sp_at_Hnum = lapply(interactions2, diff_by_group)
+## Summarize it all - species at H_num 
+ans_sp_at_Hnum = lapply(tmp_sp_at_Hnum, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
+lapply(ans_sp_at_Hnum, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
 
-lapply(ans, function(x) lapply(x, function(y) y[apply(y, 1, includes_zero),]))
-
-################################################################################
-ans = lapply(tmp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
-
-# Breaking it down to know whats going on 
-#### Run for sps at H_num
-tmp_sp_comp<-lapply(interactions, diff_by_group, diff_var = "[A-Z]{4}_")
-sp_Hnum_out<-lapply(tmp_sp_comp, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
-
-lapply(ans, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
+#### How to adjust function to get "main effect" differences at H_num? 
+#ans<-lapply(interactions, diff_by_group, diff_var = "[A-Z]{4}_")
+#ans_out<-lapply(ans, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
+#lapply(ans_out, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
 
 ################################################################################
+diff_within_H_nums_est<-lapply(all_mods_noH4,diff_within_H_nums)
+
+# Now we want to differences for all column combinations... 
+SLA_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.SLA_w_cots)
+SLA_sp_at_Hnum_vals_CI = lapply(SLA_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(SLA_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+LDMC_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.LDMC_w_cots)
+LDMC_sp_at_Hnum_vals_CI = lapply(LDMC_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(LDMC_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RDMC_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.RDMC)
+RDMC_sp_at_Hnum_vals_CI = lapply(RDMC_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RDMC_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RTD_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.RTD)
+RTD_sp_at_Hnum_vals_CI = lapply(RTD_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RTD_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RDiam_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.value.SumOfAvgDiam.mm.)
+RDiam_sp_at_Hnum_vals_CI = lapply(RDiam_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RDiam_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RMR_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.RMR)
+RMR_sp_at_Hnum_vals_CI = lapply(RMR_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RMR_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RASA_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.RASA)
+RASA_sp_at_Hnum_vals_CI = lapply(RASA_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RASA_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RGR_Tot_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RGR_Tot)
+RGR_Tot_sp_at_Hnum_vals_CI = lapply(RGR_Tot_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RGR_Tot_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+RER_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RER)
+RER_sp_at_Hnum_vals_CI = lapply(RER_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
+lapply(RER_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
+
+#### Backtransform values for each species at each H_num 
+x<-back_function_sp_atHnum(diff_within_H_nums_est$ln.LDMC_w_cots)
 
 
-# Back transformed values for plotting H_num x species (RER only) -------------------------------------------
-df_Hnum_sp<-as.data.frame(summary(all_mods_noH4$RER_ln, 
-                                  pars = c("alpha",
-                                           "ACMI_H1","ACMI_H2","ACMI_H3",
-                                           "ARTR_H1","ARTR_H2","ARTR_H3",
-                                           "ELTR_H1","ELTR_H2","ELTR_H3",
-                                           "HEAN_H1","HEAN_H2","HEAN_H3",
-                                           "HECO_H1","HECO_H2","HECO_H3",
-                                           "HEVI_H1","HEVI_H2","HEVI_H3",
-                                           "MACA_H1","MACA_H2","MACA_H3",
-                                           "MUPO_H1","MUPO_H2","MUPO_H3",
-                                           "PAMU_H1","PAMU_H2","PAMU_H3",
-                                           "PLPA_H1","PLPA_H2","PLPA_H3",
-                                           "VUOC_H1","VUOC_H2","VUOC_H3"), 
-                                  probs = c(.05,.5,.95))[["summary"]])
-df_bt<-data.frame(matrix(NA, nrow = 34, ncol = 0))
-df_bt$sp_H_num<-c("alpha",
-  "ACMI_H1","ACMI_H2","ACMI_H3",
-  "ARTR_H1","ARTR_H2","ARTR_H3",
-  "ELTR_H1","ELTR_H2","ELTR_H3",
-  "HEAN_H1","HEAN_H2","HEAN_H3",
-  "HECO_H1","HECO_H2","HECO_H3",
-  "HEVI_H1","HEVI_H2","HEVI_H3",
-  "MACA_H1","MACA_H2","MACA_H3",
-  "MUPO_H1","MUPO_H2","MUPO_H3",
-  "PAMU_H1","PAMU_H2","PAMU_H3",
-  "PLPA_H1","PLPA_H2","PLPA_H3",
-  "VUOC_H1","VUOC_H2","VUOC_H3")
-  
-exp_fun_CI05<-function(x){ exp(1.18511 + x)}
-exp_fun_CI50<-function(x){ exp(1.19133 + x)}
-exp_fun_CI95<-function(x){ exp(1.198069 + x)}
+#
+#
+#
+##
+#
+#
+#
+#
+#
 
-df_bt$bt_CI05<-apply(df_Hnum_sp[4],2, exp_fun_CI05)
-df_bt$bt_CI50<-apply(df_Hnum_sp[5],2, exp_fun_CI50)
-df_bt$bt_CI95<-apply(df_Hnum_sp[6],2, exp_fun_CI95)
-  
-df_bt_Hnum_Sp<-strsplit(df_bt$sp_H_num,  "_") 
-df_bt_Hnum_Sp<-do.call(rbind, df_bt_Hnum_Sp)
-colnames(df_bt_Hnum_Sp)<-c("Sp","Hnum")
-df_bt_Hnum_Sp<-cbind(df_bt,df_bt_Hnum_Sp )
-df_bt_Hnum_Sp<-df_bt_Hnum_Sp[-1,]
 
 
 # Plotting H_num main effects ------------------------------------------------------------------------
@@ -273,17 +273,3 @@ plot(all_mods_noH4$RGR_Tot, pars = "beta_sp_Hnum")
 names(all_mods_noH4$RER)[grep("beta_sp_Hnum",names(all_mods_noH4$RER))]<-beta_names_noh4
 plot(all_mods_noH4$RER, pars = "beta_sp_Hnum")
 
-
-################################################################################
-y_stars = rstan::extract(all_mods_noH4[[1]], pars = "y_star")
-
-
-
-for(i in 1:25){
-    plot(density(y_stars$y_star[,i]))
-    abline(h = )
-               }
-
-
-max(y_stars$y_star)
-    
