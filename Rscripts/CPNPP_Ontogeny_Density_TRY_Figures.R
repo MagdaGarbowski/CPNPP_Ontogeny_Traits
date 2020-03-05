@@ -1,5 +1,7 @@
-setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
-source("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/Rscripts/Functions/Functions_TRY_Density.R")
+if(Sys.info()["login"] == "MagdaGarbowski")
+  setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
+
+source("Rscripts/Functions/Functions_Stan_Analyses.R")
 library(ggplot2)
 library(rstan)
 library(rstanarm)
@@ -12,29 +14,26 @@ library(tidybayes)
 library(ggridges)
 library(ggmcmc)
 
-SpeciesData<-read.csv("Data_Generated/TraitData_2017.csv")
+TraitData_2017<-read.csv("Data_Generated/TraitData_PopAvg_wRates_2017.csv")
+TRY_data<-read.csv("Data_Raw_TRY_Seedweights/TRY_data/TRY.csv")
+FRED_data<-read.csv(file.choose())
 
-SpeciesData$RMR_100<-SpeciesData$RMR*100
-SpeciesData$RDMC_100<-SpeciesData$RDMC*100
-SpeciesData$LDMC_100<-SpeciesData$LDMC*100
-SpeciesData$RTD_100<-SpeciesData$RTD*100
-SpeciesData$H_num<-as.factor(SpeciesData$H_num)
+# Trait data into format for stan - SLA only 
+TraitData_2017_SLA<-TraitData_2017[TraitData_2017$trait %in% c("value.SLA_w_cots"),]
+TraitData_2017_SLA<-TraitData_2017_SLA[c("H_num", "POP_ID","SPECIES","value")]
+TraitData_2017_SLA<-na.omit.fun(TraitData_2017_SLA, c("POP_ID","SPECIES", "H_num", "value"))
+TraitData_2017_SLA<-TraitData_2017_SLA[!TraitData_2017_SLA$H_num == "H4",]   # Drop H4 
 
-# Add NA for H1 SLA for forb species 
-SpeciesData$SLA<-ifelse((SpeciesData$GrowthForm %in% c("FORB","SHRUB") & SpeciesData$H_num == "H1"), NA, SpeciesData$SLA)
-SpeciesData$SLA<-ifelse((SpeciesData$SLA == 0), NA, SpeciesData$SLA)
+TraitData_2017_SRL<-TraitData_2017[c("SAMPLE_ID","H_num", "POP_ID","SPECIES","SRL")]
+TraitData_2017_SRL<-na.omit.fun(TraitData_2017_SRL, c("SAMPLE_ID","POP_ID", "SRL","SPECIES", "H_num"))
+TraitData_2017_SRL<-TraitData_2017_SRL[!TraitData_2017_SRL$H_num == "H4",]   # Drop H4 
+names(TraitData_2017_SRL)[names(TraitData_2017_SRL) == "SRL"] <- "value"
 
-Species_splits = split(SpeciesData, paste(SpeciesData$SPECIES))
-
-
-# Missing HEVI and MACA? 
-TRY_data<-read.csv(file.choose())
-
+# TRY data into format for stan 
 TRY_data$TraitName<-as.character(TRY_data$TraitName)
 SLA_TRY<-TRY_data[grepl("leaf",TRY_data$TraitName),]
-levels(SLA_TRY$TraitName)
-levels(SLA_TRY$SpeciesName)
 SLA_TRY$SPECIES<-as.factor(NA)
+
 
 SLA_TRY$SPECIES<-ifelse(SLA_TRY$SpeciesName %in% c("Achillea  millefolium", "Achillea millefolia", "Achillea millefolium","Achillea millefolium L.","Achillea millefolium L. (s.str.)"), "ACMI", NA)
 SLA_TRY$SPECIES<-ifelse((SLA_TRY$SpeciesName %in% c("Agropyron subsecundum","Agropyron trachycaulum", "Elymus trachycaulus") & is.na(SLA_TRY$SPECIES)), "ELTR", SLA_TRY$SPECIES)
@@ -46,86 +45,121 @@ SLA_TRY$SPECIES<-ifelse((SLA_TRY$SpeciesName %in% c("Packera multilobata" ) & is
 SLA_TRY$SPECIES<-ifelse((SLA_TRY$SpeciesName %in% c("Plantago patagonica","Plantago purshii" ) & is.na(SLA_TRY$SPECIES)), "PLPA", SLA_TRY$SPECIES)
 SLA_TRY$SPECIES<-ifelse((SLA_TRY$SpeciesName %in% c("vulpia octoflora" ) & is.na(SLA_TRY$SPECIES)), "VUOC", SLA_TRY$SPECIES)
 
-# For now keep only the UnitNames "cm/g" and "mm2 mg-1"
+# Make TRY data similar to CPNPP data to go into Stan model 
 SLA_TRY<-SLA_TRY[SLA_TRY$UnitName %in% c("cm/g","mm2 mg-1"),]
-SLA_TRY_splits<-split(SLA_TRY, paste(SLA_TRY$SPECIES))
+SLA_TRY<-SLA_TRY[c("StdValue","SPECIES")]
+SLA_TRY$POP_ID <- "TRY"
+SLA_TRY$H_num <- "TRY" 
+SLA_TRY<- SLA_TRY[c("POP_ID","SPECIES","H_num","StdValue")]
+names(SLA_TRY)[names(SLA_TRY) == "StdValue"] <- "value"
+
+SLA_wTRY<-rbind(TraitData_2017_SLA, SLA_TRY)
+SLA_TRY_splits<-split(SLA_wTRY, paste(SLA_wTRY$SPECIES))
+
+# FRED data into format for stan
+FRED_data<-FRED_data[c("POP_ID","SPECIES","SRL")]
+FRED_data$H_num<-"FRED"
+FRED_data$POP_ID<-"FRED"
+FRED_data$SAMPLE_ID<-as.factor(seq.int(nrow(FRED_data)))
+FRED_data<- FRED_data[c("SAMPLE_ID","POP_ID","SRL","SPECIES","H_num")]
+names(FRED_data)[names(FRED_data) == "SRL"] <- "value"
+FRED_data<-na.omit.fun(FRED_data, c("SAMPLE_ID","POP_ID", "value","SPECIES", "H_num"))
+
+SRL_with_FRED<-rbind(TraitData_2017_SRL, FRED_data)
+SRL_with_FRED<-SRL_with_FRED[SRL_with_FRED$SPECIES %in% c("ACMI","ARTR","HEAN"),]
+SRL_with_FRED_splits<-split(SRL_with_FRED, paste(SRL_with_FRED$SPECIES))
+
+# ---------------------------- Model ----------------------------------------------
+SLA_wTRY$value<-log(SLA_wTRY$value)
+mk_SLA_TRY<-prep_data(SLA_wTRY)
+
+SLA_TRY_mod<-mods_function_all(mk_SLA_TRY, mods_function_all, mod = mod,
+                         pars = c("beta_Hnum_raw", "beta_sp_raw",
+                                  "beta_pop_raw", "beta_sp_Hnum_raw"),
+                         include = FALSE,
+                         warmup = 1000, iter = 1500,
+                         control = list(adapt_delta = 0.95))
+
+summary(SLA_TRY_mod)
+plot(SLA_TRY_mod, pars = "beta_Hnum")
+inter_names = levels(factor(paste(SLA_wTRY$SPECIES, SLA_wTRY$H_num, sep = "_")))
 
 
-# ---------------------------- Models 
-# To get TRY distributions
-Trait_rstanarm_TRY <- function (df) {
-  stan_glm(StdValue ~ 1 , 
-            data = df,
-            adapt_delta = 0.95)
-}
 
 
-# To get distributions
-Trait_rstanarm_indv <- function (df, var) {
-  stan_lmer(df[[var]] ~ 0 + H_num + (1|POP_ID), 
-            data = df,
-            prior_intercept = student_t(3,0,30), 
-            adapt_delta = 0.95)
+Trait_rstanarm_ind<-function (df){
+  stan_lmer(value ~ 0 + H_num + (1|POP_ID),
+  data=df, 
+  adapt_delta = 0.95)
 }
 
 # -----------------------------run mods ---------------------------
 
-SLA_TRY_mod_out<-lapply(SLA_TRY_splits, Trait_rstanarm_TRY) # Error - Constant variable(s) found: StdValue 
+all_mods_SLA_TRY<-lapply(SLA_TRY_splits, Trait_rstanarm_ind)
+all_mods_SRL_FRED<-lapply(SRL_with_FRED_splits, Trait_rstanarm_ind)
 
-SLA_TRY_ACMI<-Trait_rstanarm_TRY(SLA_TRY_splits$ACMI) # These all work 
-SLA_TRY_ARTR<-Trait_rstanarm_TRY(SLA_TRY_splits$ARTR)
-SLA_TRY_ELTR<-Trait_rstanarm_TRY(SLA_TRY_splits$ELTR)
-SLA_TRY_HEAN<-Trait_rstanarm_TRY(SLA_TRY_splits$HEAN)
-SLA_TRY_HECO<-Trait_rstanarm_TRY(SLA_TRY_splits$HECO)
-SLA_TRY_PLPA<-Trait_rstanarm_TRY(SLA_TRY_splits$PLPA)
-SLA_TRY_PAMU<-Trait_rstanarm_TRY(SLA_TRY_splits$PAMU)
-SLA_TRY_VUOC<-Trait_rstanarm_TRY(SLA_TRY_splits$VUOC)
-
-SLA_Species_Ind_SLA_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "SLA")
-
-Species_SLA_ACMI<-Trait_rstanarm_indv(Species_splits$ACMI,"SLA") # Divergent transitions
-Species_SLA_ARTR<-Trait_rstanarm_indv(Species_splits$ARTR,"SLA") # Divergent transitions
-Species_SLA_ELTR<-Trait_rstanarm_indv(Species_splits$ELTR,"SLA") 
-Species_SLA_HEAN<-Trait_rstanarm_indv(Species_splits$HEAN,"SLA")
-Species_SLA_HECO<-Trait_rstanarm_indv(Species_splits$HECO,"SLA") # Divergent transitions
-Species_SLA_PLPA<-Trait_rstanarm_indv(Species_splits$PLPA,"SLA") # Divergent transitions
-Species_SLA_PAMU<-Trait_rstanarm_indv(Species_splits$PAMU,"SLA")
-Species_SLA_VUOC<-Trait_rstanarm_indv(Species_splits$VUOC,"SLA") # Divergent transitions
-Species_SLA_MACA<-Trait_rstanarm_indv(Species_splits$MACA,"SLA")
-Species_SLA_HEVI<-Trait_rstanarm_indv(Species_splits$HEVI,"SLA") # Divergent transitions
-Species_SLA_MUPO<-Trait_rstanarm_indv(Species_splits$MUPO,"SLA")
-
-RMR_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RMR_100")
-LDMC_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "LDMC_100")
-RDMC_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RDMC_100")
-RTD_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "RTD_100")
-SRL_Species_Ind_mod_out<-lapply(Species_splits, Trait_rstanarm_indv, "SRL")
 
 # ------------------------- Get values ----------------------------------------------
 
-posts_ACMI<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$ACMI, SLA_TRY_ACMI)
-posts_ARTR<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$ARTR, SLA_TRY_ARTR)
-posts_ELTR<-get_posts(SLA_Species_Ind_SLA_mod_out$ELTR, SLA_TRY_ELTR)
-posts_HEAN<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$HEAN, SLA_TRY_HEAN)
-posts_HECO<-get_posts(SLA_Species_Ind_SLA_mod_out$HECO, SLA_TRY_HECO)
-posts_PLPA<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$PLPA, SLA_TRY_PLPA)
-posts_PAMU<-get_posts_forbs(SLA_Species_Ind_SLA_mod_out$PAMU, SLA_TRY_PAMU)
-posts_VUOC<-get_posts(SLA_Species_Ind_SLA_mod_out$VUOC, SLA_TRY_VUOC)
-posts_MACA<-get_posts_noTRY(Species_SLA_MACA)
-posts_MUPO<-get_posts_noTRY_grasses(Species_SLA_MUPO)
-posts_HEVI<-get_posts_noTRY(Species_SLA_HEVI)
+posts<-function(df, sps){
+  postsdf<-as.data.frame(summary(df,
+                                 pars = c("H_numH1","H_numH2","H_numH3","H_numFRED"), 
+                                 probs = c(.05,.5,.95)))
+  postsdf$species<-sps
+  postsdf$H_num<-rownames(postsdf)
+  colnames(postsdf)<-c("mean", "mcse","sd","CI05","CI50","CI95", "n_eff", "Rhat", "species","H_num")
+  return(postsdf)
+}
 
-# Why dont these keep their name?
-posts_LDMC_grasses<-lapply(list(LDMC_Species_Ind_mod_out$ELTR,LDMC_Species_Ind_mod_out$HECO, LDMC_Species_Ind_mod_out$MUPO, LDMC_Species_Ind_mod_out$VUOC),  get_posts_noTRY_grasses)
-posts_LDMC_forbs<-lapply(list(LDMC_Species_Ind_mod_out$ACMI, LDMC_Species_Ind_mod_out$ARTR, LDMC_Species_Ind_mod_out$HEAN,
-                           LDMC_Species_Ind_mod_out$HEVI, LDMC_Species_Ind_mod_out$HEVI, LDMC_Species_Ind_mod_out$MACA,
-                           LDMC_Species_Ind_mod_out$PAMU, LDMC_Species_Ind_mod_out$PLPA), get_posts_noTRY)
-posts_RDMC<-lapply(RDMC_Species_Ind_mod_out, get_posts_noTRY_grasses)
-posts_RMR<-lapply(RMR_Species_Ind_mod_out, get_posts_noTRY_grasses)
-posts_RTD<-lapply(RTD_Species_Ind_mod_out, get_posts_noTRY_grasses)
-posts_SRL<-lapply(SRL_Species_Ind_mod_out, get_posts_noTRY_grasses)
+ACMI_posts<-posts(all_mods_SLA_TRY$ACMI, "ACMI")
+ARTR_posts<-posts(all_mods_SLA_TRY$ARTR, "ARTR")
+ELTR_posts<-posts(all_mods_SLA_TRY$ELTR, "ELTR")
+HEAN_posts<-posts(all_mods_SLA_TRY$HEAN, "HEAN")
+HECO_posts<-posts(all_mods_SLA_TRY$HECO, "HECO")
+PLPA_posts<-posts(all_mods_SLA_TRY$PLPA, "PLPA")
+PAMU_posts<-posts(all_mods_SLA_TRY$PAMU, "PAMU")
+VUOC_posts<-posts(all_mods_SLA_TRY$VUOC, "VUOC")
 
-# - Plotting 
+ACMI_SRL_posts<-posts(all_mods_SRL_FRED$ACMI, "ACMI")
+ARTR_SRL_posts<-posts(all_mods_SRL_FRED$ARTR, "ARTR")
+HEAN_SRL_posts<-posts(all_mods_SRL_FRED$HEAN, "HEAN")
+
+# Plotting 
+
+plot_sla_try<-function(df, Species){
+  ggplot(df, aes(x=H_num, y = CI50)) + 
+    geom_errorbar(aes(ymin = CI05, ymax = CI95), size = .3, width = 0.3)+
+    geom_point()+
+    labs(x = " ", y = "SRL")+
+    scale_x_discrete(labels = c("10","24","42","FRED"))+
+    ylim(-150, 500)+
+    ggtitle(Species)+
+    theme_bw()+
+    theme(axis.text = element_text(size = 12))
+}
+
+plot_ACMI_SLA<-plot_sla_try(ACMI_posts, "ACMI")
+plot_ARTR_SLA<-plot_sla_try(ARTR_posts, "ARTR")
+plot_ELTR_SLA<-plot_sla_try(ELTR_posts, "ELTR")
+plot_HEAN_SLA<-plot_sla_try(HEAN_posts, "HEAN")
+plot_HECO_SLA<-plot_sla_try(HECO_posts, "HECO")
+plot_PLPA_SLA<-plot_sla_try(PLPA_posts, "PLPA")
+plot_PAMU_SLA<-plot_sla_try(PAMU_posts, "PAMU")
+plot_VUOC_SLA<-plot_sla_try(VUOC_posts, "VUOC")
+
+plot_ACMI_SRL<-plot_sla_try(ACMI_SRL_posts, "ACMI")
+plot_ARTR_SRL<-plot_sla_try(ARTR_SRL_posts, "ARTR")
+plot_HEAN_SRL<-plot_sla_try(HEAN_SRL_posts, "HEAN")
+
+pdf("Output/Figures/SLA_TRY.pdf", height = 8, width = 6)
+grid.arrange( plot_ACMI_SLA,plot_ARTR_SLA,plot_PAMU_SLA, plot_HEAN_SLA, plot_PLPA_SLA, plot_ELTR_SLA, plot_HECO_SLA, plot_VUOC_SLA, ncol =2 )
+dev.off()
+
+pdf("Output/Figures/SRL_FRED.pdf", height = 6, width = 3)
+grid.arrange( plot_ACMI_SRL, plot_ARTR_SRL, plot_HEAN_SRL )
+dev.off()
+
+# Plotting 
 
 # Specific leaf area 
 SLA_plot_ACMI<-density_plot(posts_ACMI, c(-10, 110), c(0,2.6), "Days","") + annotate("text", x = 90, y = 11, label = "ACMI (F)", size = 4)
@@ -249,3 +283,27 @@ grid.arrange(arrangeGrob(textGrob("SLA"), textGrob("LDMC"),textGrob("RMR"), text
              SLA_plot_PLPA, LDMC_plot_PLPA, RMR_plot_PLPA, SRL_plot_PLPA, RDMC_plot_PLPA, RTD_plot_PLPA, ncol = 6,
             heights = c(1,4,4,4,4,4,4,4)))
 dev.off()
+
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# RMR model has issues. All others okay? 
+# lmer models to see if would be different from 
+lmer_SLA<-lmer(sqrt(value)~ SPECIES + H_num + SPECIES * H_num + (1|POP_ID), data = SLA_wTRY)
+anova(lmer_SLA)
+mm<-emmeans::emmeans(lmer_SLA, ~SPECIES|H_num)
+emmeans::CLD(mm, Letters=letters, alpha=0.05)
+
+TraitData_2017_LDMC<-TraitData_2017[c("SAMPLE_ID","H_num", "POP_ID","SPECIES","LDMC")]
+TraitData_2017_LDMC<-na.omit.fun(TraitData_2017_LDMC, c("SAMPLE_ID","POP_ID", "LDMC","SPECIES", "H_num"))
+TraitData_2017_LDMC<-TraitData_2017_LDMC[!TraitData_2017_LDMC$H_num == "H4",]   # Drop H4 
+names(TraitData_2017_LDMC)[names(TraitData_2017_LDMC) == "LDMC"] <- "value"
