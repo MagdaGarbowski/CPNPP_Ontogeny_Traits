@@ -150,6 +150,30 @@ diff_within_H_nums<-function(mod_data){
   return(out)
 }
 
+diff_within_H_nums2 <- function(mod_data,
+                                spNames = c("ACMI","ARTR","ELTR",
+                                            "HEAN","HECO","HEVI",
+                                            "MACA","MUPO","PAMU",
+                                            "PLPA", "VUOC"))
+{
+    dat<-as.data.frame(rstan::extract(mod_data,
+                                      pars = c("alpha", "beta_Hnum","beta_sp",
+                                               "beta_sp_Hnum")))
+    
+    colnames(dat)<-c("alpha","H1","H2","H3", spNames, inter_names$ln.LDMC_w_cots)  
+    combos = expand.grid(list(alpha = "alpha",
+                              Hnum = c("H1","H2", "H3"), Sp = spNames),
+                         stringsAsFactors = FALSE)
+    combos$inter = paste(combos$Sp, combos$Hnum, sep="_")
+
+    out = as.data.frame(lapply(seq(nrow(combos)), function(i) {
+        rowSums(dat[,as.character(combos[i,])])
+    }))
+
+    colnames(out) = combos$inter
+    out
+}
+ 
 ############### Backtransforming parameter values - Species at each H_num ########
 # df comes from diff_within_H_nums function 
 
