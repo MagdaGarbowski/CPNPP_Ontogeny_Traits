@@ -107,10 +107,13 @@ summarize_diffs = function(x, FUN = quantile, only_sig_zero = FALSE, ...){
 includes_zero = function(x)
     all(x < 0) | all(x > 0)
 
-################### Difference function - species at each H_num  ####################
+###################### Differences - Species at each H_num  ####################
+# I know this is a sketchy way to do names and will work on fixing it. 
+# Is what I am calculating to make comparisons among species within time points correct though? 
+
 diff_within_H_nums<-function(mod_data){
-  dat<-as.data.frame(extract(mod_data, pars = c("alpha", "beta_Hnum","beta_sp","beta_sp_Hnum")))
-  colnames(dat)<-c("alpha","H1","H2","H3","ACMI","ARTR","ELTR","HEAN","HECO","HEVI","MACA","MUPO","PAMU", "PLPA", "VUOC", inter_names$ln.LDMC_w_cots)
+  dat<-as.data.frame(rstan::extract(mod_data, pars = c("alpha", "beta_Hnum","beta_sp","beta_sp_Hnum")))
+  colnames(dat)<-c("alpha","H1","H2","H3","ACMI","ARTR","ELTR","HEAN","HECO","HEVI","MACA","MUPO","PAMU", "PLPA", "VUOC", inter_names$ln.LDMC_w_cots)  
   out<-data.frame(ACMI_H1 = apply(dat[,c("alpha","H1","ACMI","ACMI_H1")], 1, sum), 
                   ACMI_H2 = apply(dat[,c("alpha","H2","ACMI","ACMI_H2")], 1, sum), 
                   ACMI_H3 = apply(dat[,c("alpha","H3","ACMI","ACMI_H3")], 1, sum),
@@ -146,6 +149,50 @@ diff_within_H_nums<-function(mod_data){
                   VUOC_H3 = apply(dat[,c("alpha","H3","VUOC","VUOC_H3")], 1, sum))
   return(out)
 }
+
+############### Backtransforming parameter values - Species at each H_num ########
+# df comes from diff_within_H_nums function 
+
+back_function_sp_atHnum = function(df){
+  dat_back<-exp(df)
+  dat_back_quant = apply(dat_back,2, quantile, p = c(0.025, 0.5, 0.975))
+  dat_back_quant = as.data.frame(t(dat_back_quant))
+  dat_back_quant = round(dat_back_quant, digits = 2)
+  dat_back_quant$CI = paste(dat_back_quant[,1], dat_back_quant[,3], sep = ", ")
+  dat_back_quant$names = rownames(dat_back_quant)
+  rownames(dat_back_quant) = NULL
+  dat_back_quant = dat_back_quant[,-c(1,3)]
+  dat_back_quant_long = reshape(dat_back_quant,
+                               direction = "long",
+                               varying = names(dat_back_quant[1:2]),
+                               v.names = "val",
+                               timevar = "CI",
+                               times = names(dat_back_quant[1:2]))
+  rownames(dat_back_quant_long) = NULL
+  dat_back_quant_long = dat_back_quant_long[order(dat_back_quant_long$names),]
+  y = strsplit(dat_back_quant_long$names, "_" )
+  yy = do.call(rbind, y)
+  colnames(yy) = c("SPECIES","H_num")
+  z = cbind(dat_back_quant_long,yy)
+  z = reshape (z, 
+              idvar = c("SPECIES", "CI"),
+              timevar = c("H_num"),
+              direction = "wide")
+  zz = z[,c(1,2,4,7,10)]
+  return(zz)
+}
+
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
 
 ######################  Differences function - H_num ############################ 
 Hnum_difference_function_noH4<-function(df){
@@ -219,107 +266,6 @@ samples_wide_fun<-function(df){
   sp_df_wide
 }
 
-#-------------------Functions for backtransforming parameter values ---------------------
-################ Back transform - species at each H_num #####################
-# df come from diff_within_H_nums function 
-
-back_function_sp_atHnum = function(df){
-  dat_back<-exp(df)
-  dat_back_quant <- apply(dat_back,2, quantile, p = c(0.025, 0.5, 0.975))
-  dat_back_quant<-as.data.frame(t(dat_back_quant))
-  dat_back_quant<-round(dat_back_quant, digits =3)
-  dat_back_quant$CI = paste(dat_back_quant[,1], dat_back_quant[,3], sep = ", ")
-  dat_back_quant$names<-rownames(dat_back_quant)
-  rownames(dat_back_quant)<-NULL
-  dat_back_quant<-dat_back_quant[,-c(1,3)]
-  dat_back_quant_long<-reshape(dat_back_quant,
-          direction = "long",
-          varying = names(dat_back_quant[1:2]),
-          v.names = "val",
-          timevar = "CI",
-          times = names(dat_back_quant[1:2]))
-  rownames(dat_back_quant_long)<-NULL
-  dat_back_quant_long <- dat_back_quant_long[order(dat_back_quant_long$names),]
-  y<-strsplit(dat_back_quant_long$names, "_" )
-  y <- do.call(rbind, y)
-  colnames(y)<-c("SPECIES","H_num")
-  z <- cbind(dat_back_quant_long,y)
-  z<-reshape (z, 
-              idvar = c("SPECIES", "CI"),
-              timevar = c("H_num"),
-              direction = "wide")
-  zz<-z[,c(1,2,4,7,10)]
-  return(zz)
-}
 
 
-
-
-
-
-# Back transform from log 
-back_trans_function_H_num_noH4<-function(df, var){
-  df_Hnum<-as.data.frame(summary(df, pars = c("alpha","beta_Hnum"), probs = c(.05,.5,.95))[["summary"]])
-  df_bt<-data.frame(matrix(NA, nrow = 3, ncol = 0))
-  df_bt$H_num<-c("H1","H2","H3")
-  df_bt$bt_CI05<-c(exp(df_Hnum[1,4] + df_Hnum[2,4]), 
-                    exp(df_Hnum[1,4] + df_Hnum[3,4]),
-                    exp(df_Hnum[1,4] + df_Hnum[4,4]))
-  df_bt$bt_CI50<-c(exp(df_Hnum[1,5] + df_Hnum[2,5]), 
-                   exp(df_Hnum[1,5] + df_Hnum[3,5]),
-                   exp(df_Hnum[1,5] + df_Hnum[4,5]))
-  df_bt$bt_CI95<-c(exp(df_Hnum[1,6] + df_Hnum[2,6]), 
-                     exp(df_Hnum[1,6] + df_Hnum[3,6]),
-                     exp(df_Hnum[1,6] + df_Hnum[4,6]))
-  df_bt$trait <- var
-  return(df_bt)
-}
-
-bt_function_sp_Hnum_log<-function(df){
-  df_Hnum_sp<-as.data.frame(summary(df, pars = c("alpha","beta_sp_Hnum"), 
-                                    probs = c(.05,.5,.95))[["summary"]])
-  df_Hnum_sp$names<-c("alpha",inter_names$ln.LDMC_w_cots)
-  
-  df_bt<-data.frame(matrix(NA, nrow = 34, ncol = 0))
-  df_bt$sp_H_num<-c("alpha",inter_names$ln.LDMC_w_cots)
-  
-  exp_fun_CI05<-function(x){ exp(df_Hnum_sp[1,4] + x)}
-  exp_fun_CI50<-function(x){ exp(df_Hnum_sp[1,5] + x)}
-  exp_fun_CI95<-function(x){ exp(df_Hnum_sp[1,6] + x)}
-  
-  df_bt$bt_CI05<-apply(df_Hnum_sp[4],2, exp_fun_CI05)
-  df_bt$bt_CI50<-apply(df_Hnum_sp[5],2, exp_fun_CI50)
-  df_bt$bt_CI95<-apply(df_Hnum_sp[6],2, exp_fun_CI95)
-  
-  df_bt_Hnum_Sp<-strsplit(df_bt$sp_H_num,  "_") 
-  df_bt_Hnum_Sp<-do.call(rbind, df_bt_Hnum_Sp)
-  colnames(df_bt_Hnum_Sp)<-c("Sp","Hnum")
-  df_bt_Hnum_Sp<-cbind(df_bt,df_bt_Hnum_Sp )
-  df_bt_Hnum_Sp<-df_bt_Hnum_Sp[-1,]
-  return(df_bt_Hnum_Sp)
-}
-
-bt_function_sp_Hnum<-function(df){
-  df_Hnum_sp<-as.data.frame(summary(df, pars = c("alpha","beta_sp_Hnum"), 
-                                    probs = c(.05,.5,.95))[["summary"]])
-  df_Hnum_sp$names<-c("alpha",inter_names$ln.LDMC_w_cots)
-  
-  df_bt<-data.frame(matrix(NA, nrow = 34, ncol = 0))
-  df_bt$sp_H_num<-c("alpha",inter_names$ln.LDMC_w_cots)
-  
-  exp_fun_CI05<-function(x){ (df_Hnum_sp[1,4] + x)}
-  exp_fun_CI50<-function(x){ (df_Hnum_sp[1,5] + x)}
-  exp_fun_CI95<-function(x){ (df_Hnum_sp[1,6] + x)}
-  
-  df_bt$bt_CI05<-apply(df_Hnum_sp[4],2, exp_fun_CI05)
-  df_bt$bt_CI50<-apply(df_Hnum_sp[5],2, exp_fun_CI50)
-  df_bt$bt_CI95<-apply(df_Hnum_sp[6],2, exp_fun_CI95)
-  
-  df_bt_Hnum_Sp<-strsplit(df_bt$sp_H_num,  "_") 
-  df_bt_Hnum_Sp<-do.call(rbind, df_bt_Hnum_Sp)
-  colnames(df_bt_Hnum_Sp)<-c("Sp","Hnum")
-  df_bt_Hnum_Sp<-cbind(df_bt,df_bt_Hnum_Sp )
-  df_bt_Hnum_Sp<-df_bt_Hnum_Sp[-1,]
-  return(df_bt_Hnum_Sp)
-}
 
