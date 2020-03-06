@@ -9,23 +9,13 @@ library(rstanarm)
 library(bayesplot)
 library(HDInterval)
 library(gridExtra)
-library(tidyr)
 
 bayesplot::color_scheme_set("brightblue")
-
-# Data with individuals for full model 
-# TraitData_Ind_2017$H_num<-as.character(as.factor(TraitData_Ind_2017$H_num))
-# na.omit_ind<-na.omit.fun(TraitData_Ind_2017, c("POP_ID", "value","trait","SPECIES", "H_num"))
-# Traits_ind<-na.omit_ind[na.omit_ind$trait %in% c ("RDMC","ln.RTD","RMR","ln.SRL", "ln.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "LDMC_w_cots","ln.RASARatio"),]
-# Traits_ind_noH4<-Traits_ind[!Traits_ind$H_num %in% c("H4"),]
-# Trait_ind_splits_noH4 = split(Traits_ind_noH4, paste(Traits_ind_noH4$trait))
-# data_ind_noH4<-lapply(Trait_ind_splits_noH4, prep_data)
 
 # Data for full model - mean estimates of traits by species and time 
 Pop_avg_data_wrates$H_num<-as.character(as.factor(Pop_avg_data_wrates$H_num))
 na.omit_pop<-na.omit.fun(Pop_avg_data_wrates, c("POP_ID", "value","trait","SPECIES", "H_num"))
 Traits_all<-na.omit_pop[na.omit_pop$trait %in% c ("ln.RDMC","ln.RTD","ln.RMR","ln.SRL", "ln.value.SumOfAvgDiam.mm.", "ln.SLA_w_cots", "ln.LDMC_w_cots","ln.RASARatio","RER_ln","RGR_Tot_ln"),] 
-Traits_all[Traits_all$trait == "RGR_Tot",]$value<-Traits_all[Traits_all$trait == "RGR_Tot",]$value*1000
 
 Traits_all_noH4<-Traits_all[!Traits_all$H_num %in% c ("H4"),] 
 Trait_splits_noH4 = split(Traits_all_noH4, paste(Traits_all_noH4$trait))
@@ -51,32 +41,6 @@ all_mods_noH4 = lapply(data_noH4, mods_function_all, mod = mod,
                        include = FALSE,
                        warmup = 1000, iter = 1500,
                        control = list(adapt_delta = 0.95)) # Divergent transitions and Bulk Effective Sample Size too low 
-
-# Estimate differences between H_nums for all traits ----------------------------
-H_num_diff_SLA<-Hnum_difference_function_noH4(all_mods_noH4$ln.SLA_w_cots)
-H_num_diff_LDMC<-Hnum_difference_function_noH4(all_mods_noH4$ln.LDMC_w_cots)
-H_num_diff_RER<-Hnum_difference_function_noH4(all_mods_noH4$RER)
-H_num_diff_RGR<-Hnum_difference_function_noH4(all_mods_noH4$RGR_Tot)
-H_num_diff_RASA<-Hnum_difference_function_noH4(all_mods_noH4$ln.RASARatio)
-H_num_diff_RMR<-Hnum_difference_function_noH4(all_mods_noH4$ln.RMR)
-H_num_diff_SRL<-Hnum_difference_function_noH4(all_mods_noH4$ln.SRL)
-H_num_diff_RTD<-Hnum_difference_function_noH4(all_mods_noH4$ln.RTD)
-H_num_diff_RDMC<-Hnum_difference_function_noH4(all_mods_noH4$ln.RDMC)
-H_num_diff_RDIam<-Hnum_difference_function_noH4(all_mods_noH4$ln.value.SumOfAvgDiam.mm.)
-
-# Back transformed values for plotting (H_num main effects) --------------------------------------------
-SLA_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SLA_w_cots, "SLA")
-LDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.LDMC_w_cots, "LDMC")
-RASA_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH4$ln.RASARatio, "RASA")
-RMR_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RMR, "RMF")
-
-Rdiam_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.value.SumOfAvgDiam.mm., "R.Diam")
-RDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RDMC, "RDMC")
-RTD_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RTD, "RTD")
-SRL_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SRL, "SRL")
-
-RGR_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RGR_Tot, "RGR")
-RER_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RER, "RER")
 
 
 ################################################################################
@@ -109,7 +73,7 @@ tmp_sp_at_Hnum = lapply(interactions2, diff_by_group)
 ans_sp_at_Hnum = lapply(tmp_sp_at_Hnum, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
 lapply(ans_sp_at_Hnum, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
 
-#### How to adjust function to get "main effect" differences at H_num? 
+#How to adjust function to get "main effect" differences of H_num? 
 #ans<-lapply(interactions, diff_by_group, diff_var = "[A-Z]{4}_")
 #ans_out<-lapply(ans, function(x) lapply(x, function(y) t(sapply(y, quantile, p=c(0.05, 0.5, 0.95)))))
 #lapply(ans_out, function(x) lapply(x, function(y) y [apply(y,1, includes_zero),]))
@@ -146,16 +110,79 @@ RASA_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$ln.RASA)
 RASA_sp_at_Hnum_vals_CI = lapply(RASA_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
 lapply(RASA_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
 
-RGR_Tot_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RGR_Tot)
+RGR_Tot_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RGR_Tot_ln)
 RGR_Tot_sp_at_Hnum_vals_CI = lapply(RGR_Tot_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
 lapply(RGR_Tot_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
 
-RER_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RER)
+RER_sp_at_Hnum_vals = diff_by_group(diff_within_H_nums_est$RER_ln)
 RER_sp_at_Hnum_vals_CI = lapply(RER_sp_at_Hnum_vals, function(y) t(sapply(y, quantile, p=c(0.025, 0.5, 0.975))))
 lapply(RER_sp_at_Hnum_vals_CI, function(y) y [apply(y,1, includes_zero),])
 
-#### Backtransform values for each species at each H_num 
-x<-back_function_sp_atHnum(diff_within_H_nums_est$ln.LDMC_w_cots)
+
+############################ Backtransform values for each species at each H_num #####################################
+bt_w_CI_all<-lapply(diff_within_H_nums_est, back_function_sp_atHnum)
+bt_w_CI_all_ord <- bt_w_CI_all[c("ln.SLA_w_cots","ln.LDMC_w_cots","ln.RASARatio","ln.RMR","ln.SRL","ln.RDMC","ln.RTD", "ln.value.SumOfAvgDiam.mm.", "RER_ln","RGR_Tot_ln")]
+bt_w_CI_all_out<-do.call(cbind,bt_w_CI_all_ord)
+
+write.csv(bt_w_CI_all_out, "/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/Output/Tables/Stan_Medians_CI.csv")
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+########################### Differences at H_num for all traits together ###########################################
+H_num_diff_SLA<-Hnum_difference_function_noH4(all_mods_noH4$ln.SLA_w_cots)
+H_num_diff_LDMC<-Hnum_difference_function_noH4(all_mods_noH4$ln.LDMC_w_cots)
+H_num_diff_RER<-Hnum_difference_function_noH4(all_mods_noH4$RER)
+H_num_diff_RGR<-Hnum_difference_function_noH4(all_mods_noH4$RGR_Tot)
+H_num_diff_RASA<-Hnum_difference_function_noH4(all_mods_noH4$ln.RASARatio)
+H_num_diff_RMR<-Hnum_difference_function_noH4(all_mods_noH4$ln.RMR)
+H_num_diff_SRL<-Hnum_difference_function_noH4(all_mods_noH4$ln.SRL)
+H_num_diff_RTD<-Hnum_difference_function_noH4(all_mods_noH4$ln.RTD)
+H_num_diff_RDMC<-Hnum_difference_function_noH4(all_mods_noH4$ln.RDMC)
+H_num_diff_RDIam<-Hnum_difference_function_noH4(all_mods_noH4$ln.value.SumOfAvgDiam.mm.)
+
+#################### Back transformed values for all species together at each H_num ###############################
+SLA_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SLA_w_cots, "SLA")
+LDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.LDMC_w_cots, "LDMC")
+RASA_bt_Hnum<-back_trans_function_H_num_noH1(all_mods_noH4$ln.RASARatio, "RASA")
+RMR_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RMR, "RMF")
+
+Rdiam_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.value.SumOfAvgDiam.mm., "R.Diam")
+RDMC_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RDMC, "RDMC")
+RTD_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.RTD, "RTD")
+SRL_bt_Hnum<-back_trans_function_H_num_noH4(all_mods_noH4$ln.SRL, "SRL")
+
+RGR_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RGR_Tot, "RGR")
+RER_bt_Hnum<-back_function_H_num_noH4(all_mods_noH4$RER, "RER")
+
+
+
+
 
 
 #
@@ -242,34 +269,4 @@ dev.off()
 #
 #
 
-# Look at results ---------------------------------------------------# 
-names(all_mods_noH4$ln.SLA_w_cots)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.SLA_w_cots))]<-beta_names_noh4
-plot(all_mods_noH4$ln.SLA_w_cots, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.LDMC_w_cots)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.LDMC_w_cots))]<-beta_names_noh4
-plot(all_mods_noH4$ln.LDMC_w_cots, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.SRL)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.SRL))]<-beta_names_noh4
-plot(all_mods_noH4$ln.SRL, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.RDMC)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.RDMC))]<-beta_names_noh4
-plot(all_mods_noH4$ln.RDMC, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.RTD)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.RTD))]<-beta_names_noh4
-plot(all_mods_noH4$ln.RTD, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.value.SumOfAvgDiam.mm.)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.value.SumOfAvgDiam.mm.))]<-beta_names_noh4
-plot(all_mods_noH4$ln.value.SumOfAvgDiam.mm., pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.RMR)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.RMR))]<-beta_names_noh4
-plot(all_mods_noH4$ln.RMR, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$ln.RASARatio)[grep("beta_sp_Hnum",names(all_mods_noH4$ln.RASARatio))]<-beta_names_noh4
-plot(all_mods_noH4$ln.RASARatio, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$RGR_Tot)[grep("beta_sp_Hnum",names(all_mods_noH4$RGR_Tot))]<-beta_names_noh4
-plot(all_mods_noH4$RGR_Tot, pars = "beta_sp_Hnum")
-
-names(all_mods_noH4$RER)[grep("beta_sp_Hnum",names(all_mods_noH4$RER))]<-beta_names_noh4
-plot(all_mods_noH4$RER, pars = "beta_sp_Hnum")
 
