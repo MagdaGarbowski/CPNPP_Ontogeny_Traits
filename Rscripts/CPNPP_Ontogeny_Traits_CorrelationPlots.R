@@ -5,38 +5,138 @@ setwd("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/")
 source("Rscripts/Functions/Functions_TraitCorrelation_Plots.R")
 
 library(psych)
+library(psychTools)
 library(plyr)
 library(ggplot2)
 library(gridExtra)
 library(grid)
+library(factoextra)
 
-# Pop avg. data 
-Pop_avg_data<-read.csv("Data_Generated/TraitData_PopAvg_2017.csv")
-Pop_avg_data_2<-as.data.frame(Pop_avg_data[!colnames(Pop_avg_data) %in% c("X","LOCATION_CODE","POP_CODE","GrowthForm")])
+# Load data 
+Pop_avg_data<-read.csv("Data_Generated/TraitData_PopAvg_wRates_2017.csv")
+seed_weights<-read.csv("Data_Raw_TRY_Seedweights/traits_population_seedweights.csv")
+
+# Pop data
+Pop_avg_data_2<-as.data.frame(Pop_avg_data[!colnames(Pop_avg_data) %in% c("X","LOCATION_CODE","POP_CODE")])
 Pop_avg_data_2$value[Pop_avg_data_2$value == 0] <-NA
+Pop_avg_data_2<-Pop_avg_data_2[!Pop_avg_data_2$H_num =="H4",]
 
-# Pops growth rates data 
-SpeciesData_GrowthRates<-read.csv("Data_Generated/TraitData_GrowthRates_2017.csv")
-SpeciesData_GrowthRates$H_num<-as.factor(SpeciesData_GrowthRates$H_num)
-levels(SpeciesData_GrowthRates$H_num)<-c("H1","H2","H3","H4")
+# Long to wide format? 
+Pop_avg_data_2_wide<-reshape(Pop_avg_data_2, 
+                             idvar = c("H_num","POP_ID", "H_num","SPECIES","GrowthForm"),
+                             timevar = "trait",
+                             direction = "wide")
 
-# long to wide for pop_avg_data
-Pop_avg_data_2<- reshape(Pop_avg_data, idvar = c("POP_ID","H_num","GrowthForm", "SPECIES"), timevar = "trait", direction = "wide")
+Pop_avg_data_2_wide_keep<-Pop_avg_data_2_wide[c("POP_ID","GrowthForm","H_num","value.ln.SLA_w_cots","value.ln.LDMC_w_cots","value.ln.HT","value.ln.RASARatio","value.ln.RDMC","value.ln.RMR",
+                                                "value.ln.RTD", "value.ln.value.SumOfAvgDiam.mm.","value.RER_ln", "value.ln.SRL")]
 
-ag2<-merge(Pop_avg_data_2, SpeciesData_GrowthRates, by=c("POP_ID","H_num"))
-ag2$value.SLA<-ifelse((ag2$GrowthForm.x %in% c("FORB","SHRUB") & ag2$H_num == "H1"), NA, ag2$value.SLA) # Add NA for H1 SLA for forb species 
-ag2$value.LDMC<-ifelse((ag2$GrowthForm.x %in% c("FORB","SHRUB") & ag2$H_num == "H1"), NA, ag2$value.LDMC) # Add NA for H1 SLA for forb species 
-
-# Data transformations to improve normality 
-cols<- c("value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD","Tot_weight_avg")
-ag2[cols]<-log(ag2[cols])
-
-H_splits = split(ag2, paste(ag2$H_num))
+Pop_avg_data_2_wide_keep_2<-Pop_avg_data_2_wide_keep
+colnames(Pop_avg_data_2_wide_keep_2)<-c("POP_ID","GrowthForm","H_num","SLA","LDMC","HT","RASA","RDMC","RMR","RTD","Diam","RER","SRL")
 
 
-Harvest_pairs_panels<-lapply(H_splits[c(2,3,4)], pairs_panels_function, c("value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD", "RGR_Tot_ln", "RER_ln"))
+# Seed data 
+seed_weights<-seed_weights[,c("POP_ID","AVG_SEED_WEIGHT")]
+seed_weights$Tot_weight_avg_mg <- seed_weights$AVG_SEED_WEIGHT * 1000
+seed_weights$Tot_weight_avg_mg_ln<-log(seed_weights$Tot_weight_avg_mg)
+seed_weights$H_num1 = "H1"
+seed_weights$H_num2 = "H2"
+seed_weights$H_num3 = "H3"
 
-pairs_panels_function(ag2,c("value.SLA","value.LDMC","value.RMR","value.SRL","value.RDMC","value.RTD", "RGR_Tot_ln", "RER_ln"))
+seed_weights_long<-reshape(seed_weights,
+                           direction = "long",
+                           varying = c("H_num1","H_num2","H_num3"),
+                           v.names = "H_num",
+                           idvar = "POP_ID",
+                           timevar = "x",
+                           times = c("H_num1","H_num2","H_num3"))
+rownames(seed_weights_long) = NULL
+seed_weights_long$SMass<-seed_weights_long$Tot_weight_avg_mg_ln
+seed_weights_long[,c("x", "Tot_weight_avg_mg","AVG_SEED_WEIGHT","Tot_weight_avg_mg_ln")]<-NULL
+
+seed_weights_long$H_num<-as.factor(seed_weights_long$H_num)
+
+#### Combine seed and trait data 
+
+Pop_data_w_seeds<-merge(Pop_avg_data_2_wide_keep_2, seed_weights_long, by = c("POP_ID","H_num"))
+Pop_data_w_seeds<-Pop_data_w_seeds[complete.cases(Pop_data_w_seeds),]
+Pop_data_w_seeds2 = Pop_data_w_seeds
+Pop_data_w_seeds2_splits<-split(Pop_data_w_seeds2, paste(Pop_data_w_seeds2$H_num))
+
+
+#Pop_data_w_seeds2[,c("POP_ID","GrowthForm")] = NULL
+
+H_splits = split(Pop_data_w_seeds2, paste(Pop_data_w_seeds2$H_num))
+
+H1_corr.out<-corr.test(H_splits$H1[,-c(1,2,3)], y = NULL, use = "pairwise", method = "pearson", adjust = "holm", alpha = 0.1, ci = TRUE, minlength = 10)
+H1_corr<-print(corr.p(H1_corr.out$r, n = 51), short = FALSE, digits = 4)
+
+H2_corr.out<-corr.test(H_splits$H2[,-1], y = NULL, use = "pairwise", method = "pearson", adjust = "holm", alpha = 0.1, ci = TRUE, minlength = 10)
+H2_corr<-print(corr.p(H2_corr.out$r, n = 51), short = FALSE, digits = 4)
+
+H3_corr.out<-corr.test(H_splits$H3[,-1], y = NULL, use = "pairwise", method = "pearson", adjust = "holm", alpha = 0.05, ci = TRUE, minlength = 10)
+H3_corr<-print(corr.p(H3_corr.out$r, n = 51), short = FALSE, digits = 4)
+
+corr_all<-cbind(H1_corr,H2_corr,H3_corr)
+
+#Harvest_pairs_panels<-lapply(H_splits[c(1,2,3)], pairs_panels_function, c("SLA","LDMC","HT","RASA","RDMC","RMR","RTD","Diam","RER","RGR"))
+
+# PCA - Attempt 1 
+H1_dat<-H_splits$H1[complete.cases(H_splits$H1),][,c("POP_ID","GrowthForm","SLA","LDMC","HT","RASA","RDMC","RMR","RTD","Diam","RER","SRL","SMass")]
+H2_dat<-H_splits$H2[complete.cases(H_splits$H2),][,c("POP_ID","GrowthForm","SLA","LDMC","HT","RASA","RDMC","RMR","RTD","Diam","RER","SRL","SMass")]
+H3_dat<-H_splits$H3[complete.cases(H_splits$H3),][,c("POP_ID","GrowthForm","SLA","LDMC","HT","RASA","RDMC","RMR","RTD","Diam","RER","SRL","SMass")]
+
+
+PCA_H1<- principal(H1_dat[,-c(1,2)], 3, rotate = "varimax", scores = TRUE)
+PCA_H2<- principal(H2_dat[,-c(1,2)], 3, rotate = "varimax", scores = TRUE)
+PCA_H3<- principal(H3_dat[,-c(1,2)], 3, rotate = "varimax", scores = TRUE)
+
+RC_H1_1_2<-biplot(PCA_H1,choose=c(1,2), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+RC_H1_1_3<-biplot(PCA_H1,choose=c(1,3), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+
+RC_H2_1_2<-biplot(PCA_H2,choose=c(1,2), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+RC_H2_1_3<-biplot(PCA_H2,choose=c(1,3), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+
+RC_H3_1_2<-biplot(PCA_H3,choose=c(1,2), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+RC_H3_1_3<-biplot(PCA_H3,choose=c(1,3), col = c( "blue", "black"), pch=c(24,21)[H1_dat[1:50,"GrowthForm"]], group = H1_dat[1:50, "GrowthForm"])
+
+
+
+pdf("/Users/MagdaGarbowski/CPNPP_Ontogeny_Traits/Output/Figures/PCAs.pdf", height = 6, width = 10)
+grid.arrange(PCA_h1, PCA_h2, PCA_h3, ncol = 3)
+dev.off()
+
+# H1: RC1: Neg loadings of SLA pos. loadings LDMC, RASA, RTD # cheap leaf, expensive/extensive root? 
+#     RC2: Positive loadings HT, Diameter, RER. Neg : RGR # Aquisitive tissues, low mass 
+#     RC3: Positive loadings of RDMC, RMR # Root investment 
+# H2: RC1: Positive loadings of Hieght, diamter, RGR # Growth axis 
+#     RC2: Neg SLA positive LDMC, RASA #Leaf tissue construction
+#     RC3: positive RMR, RER # Root investment 
+# H3: RC1: Neg SLA, Positive RASA, RMR, RTD #Similar to H1
+#     RC2: Positive: LDMC, HT, RDMC, Diam # Construction 
+#     RC3: Positive RER, RGR #Root investment 
+
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+
+#
+#
+#
+#
+#
+#
+#
+
 
 # -----------------------------Get correlations coeffecients -----------------------
 # Need to look at pearsons (panels plots output) to see significance
@@ -106,4 +206,7 @@ grid.arrange(arrangeGrob(textGrob("Grasses"), textGrob("Forbs"), ncol = 2),
              arrangeGrob(SLA_LDMC_grass, SLA_LDMC_forb, SLA_SRL_grass, SLA_SRL_forb, SRL_RTD_grass, SRL_RTD_forb, ncol = 2),
              arrangeGrob(leg, ncol = 1), heights = c(0.4,0.6,8,0.6,8,0.6))
 dev.off()
+
+
+
 
