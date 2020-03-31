@@ -14,12 +14,12 @@ source("Rscripts/Functions/Functions_DataMgmt.R")
 
 seed_weights<-read.csv("Data_Raw_TRY_Seedweights/traits_population_seedweights.csv")
 seed_weights<-seed_weights[,c("POP_ID","AVG_SEED_WEIGHT")]
-seed_weights$Tot_weight_avg <- seed_weights$AVG_SEED_WEIGHT
+seed_weights$Tot_weight_avg_mg <- seed_weights$AVG_SEED_WEIGHT * 1000
+seed_weights$Tot_weight_avg_mg_ln<-log(seed_weights$Tot_weight_avg_mg)
 seed_weights$H_num = 0.01
-seed_weights$Above_weight_avg = NA
-seed_weights$Below_weight_avg = NA
-seed_weights$RL_avg = 0.2
-seed_weights <- seed_weights[c("H_num","POP_ID","Above_weight_avg","Tot_weight_avg","Below_weight_avg","RL_avg")]
+seed_weights$RL_avg_cm = 0.3
+seed_weights$RL_avg_cm_ln = log(0.2)
+seed_weights <- seed_weights[c("H_num","POP_ID","Tot_weight_avg_mg","Tot_weight_avg_mg_ln","RL_avg_cm", "RL_avg_cm_ln")]
 
 # Load data 
 filedirectory = "Data_Raw/"
@@ -37,6 +37,15 @@ Trait_data<-pop_id_function(Trait_data, "SAMPLE_ID", "_", c("SPECIES","LOCATION_
 
 # -------------------------- Values entered wrong from data sheets (usually extra zeros) ---------------------- 
 # Zero values entered wrong 
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_9_H1_O", "LWF_A"] <-NA  # Entered for wrong sample 
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_9_H1_O", "LWS_A"] <-NA
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_9_H1_O", "LWD_A"] <-NA
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_8_H4_O", "LWF_A"] <-0.1269
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_8_H4_O", "LWS_A"] <-0.1270
+Trait_data [Trait_data$SAMPLE_ID == "MACA_UTNE_BON_8_H4_O", "LWD_A"] <-0.0179
+Trait_data [Trait_data$SAMPLE_ID == "HEAN_AZSE_HWD_1_H1_O", "CWD"] <-0.00048
+Trait_data [Trait_data$SAMPLE_ID == "ACMI_UTNW_CCC_1_H1_R", "LWD"] <-0.0001273
+Trait_data [Trait_data$SAMPLE_ID == "ARTR_UTSC_B_1_H1_O", "LWD"] <-0.0001
 Trait_data [Trait_data$SAMPLE_ID == "VUOC_UTSE_IM_4_H2_B", "LWD"] <-0.0024
 Trait_data [Trait_data$SAMPLE_ID == "ACMI_UTNW_VE_2_H3_G", "LWD"] <-0.00075
 Trait_data [Trait_data$SAMPLE_ID == "ELTR_NMNW_C_18_H1_O", "LWD"] <-0.0021
@@ -156,6 +165,11 @@ Trait_data$SLA[Trait_data$SLA > 400] <- NA
 Trait_data$SLA[Trait_data$SLA == 0] <- NA 
 
 # ---------------------------------------- SLA based on cotyledons and leaves for H1 forbs ------------------------
+
+Trait_data$CWD[Trait_data$CWD == 0] <- NA
+Trait_data$LWD[Trait_data$LWD == 0] <- NA
+Trait_data$CWD[Trait_data$SWD == 0] <- NA
+
 Trait_data$SLA_w_cots<-ifelse((Trait_data$GrowthForm == "FORB" & Trait_data$H_num %in% c("H1","H2")),
                               ((Trait_data$Total.Of.PROJ_AREA_AG/rowSums(Trait_data[,c("CWD","LWD")], na.rm=TRUE))/10),
                               Trait_data$SLA)
@@ -200,17 +214,17 @@ Trait_data$LDMC<-ifelse(Trait_data$SAMPLE_ID %in% c("ACMI_UTNW_CCC_4_H4_R"),
                         
 Leaf_vars<-(Trait_data[names(Trait_data) %in% c("SAMPLE_ID","LWS","L.SFW","LWD","LWS_A","LWS_B","BWS_A","LWD_tmp", "LWD_A", "LWD_B","BWD_A","LW_Max_Sum","LDMC")])
 Trait_data$LDMC[Trait_data$LDMC > 0.8] <- NA 
-Trait_data$LDMC<-Trait_data$LDMC * 1000
+Trait_data$LDMC<-Trait_data$LDMC
 
 # ------------------------------------------ LDMC with cotelydons for H1 and H2 Forbs ---------------------
 Trait_data$LDMC_w_cots<-ifelse((Trait_data$GrowthForm == "FORB" & Trait_data$H_num %in% c("H1","H2")),
-                              ((rowSums(Trait_data[,c("CWD","LWD")], na.rm = TRUE))/(rowSums(Trait_data[,c("CWS","LWS")], na.rm = TRUE))*1000),
+                              ((rowSums(Trait_data[,c("CWD","LWD")], na.rm = TRUE))/(rowSums(Trait_data[,c("CWS","LWS")], na.rm = TRUE))),
                               (Trait_data$LDMC))
 
 
 # View(Trait_data[,c("SAMPLE_ID","SLA","SLA_w_cots")])
 # View(Trait_data[,c("SAMPLE_ID","Total.Of.PROJ_AREA_AG","CWS","LWS","CWD","LWD","SAMPLE_ID","LDMC","LDMC_w_cots")])
-Trait_data$LDMC_w_cots[Trait_data$LDMC_w_cots > 400] <- NA 
+Trait_data$LDMC_w_cots[Trait_data$LDMC_w_cots > .5] <- NA 
 
 # ------------------------------------------ SRL (m g^-1) -------------------------------------------------
 
@@ -219,11 +233,11 @@ Trait_data$SRL <- ((Trait_data$SumOfLength.cm./Trait_data$RWD))/100 # SRL - Spec
 
 #------------------------------------------ RDMC  -------------------------------------------------
 
-Trait_data$RDMC <- ((Trait_data$RWD)/(Trait_data$RWF)) * 100 # RDMC (Root Dry Matter Content)
+Trait_data$RDMC <- ((Trait_data$RWD)/(Trait_data$RWF))  # RDMC (Root Dry Matter Content)
 
 Trait_data [Trait_data$SAMPLE_ID == "MUPO_AZSE_BRR_5_H1_G", "RDMC"] <-NA
 Trait_data [Trait_data$SAMPLE_ID == "MUPO_AZSE_SIT_3_H1_O", "RDMC"] <-NA
-Trait_data$RDMC[Trait_data$RDMC > 40] <- NA 
+Trait_data$RDMC[Trait_data$RDMC > .4] <- NA 
 
 #---------------------------------------------RTD-------------------------------------------
 
@@ -250,6 +264,21 @@ Trait_data$RASARatio<-(Trait_data$SumOfProjArea.cm2./Trait_data$Total.Of.PROJ_AR
 Trait_data$RASARatio<-ifelse((Trait_data$H_num == "H4"), NA, Trait_data$RASARatio)
 Trait_data$RASARatio[Trait_data$RASARatio > 40] <- NA
 
+# --------------- log transform traits of interest at the individual level --------------------------------------
+
+# Data into long format 
+Trait_data_3<-Trait_data[c("SAMPLE_ID","POP_ID","SPECIES","GrowthForm", "H_num",
+                                     "SumOfAvgDiam.mm.","HT","SLA_w_cots","SRL","RTD","RASARatio", "RMR", "LDMC_w_cots","RDMC")] 
+
+Trait_data_3_long<-reshape(Trait_data_3, 
+                               direction = "long", 
+                               varying = names(Trait_data_3)[6:14],
+                               v.names = "value",
+                               idvar = c("SAMPLE_ID"),
+                               timevar = "trait",
+                               times = names(Trait_data_3)[6:14])
+
+
 # ------------------------------ Calculate Population Avgs ------------------------
 
 Trait_avg_pop_df<-lapply(c("SumOfLength.cm.","SumOfAvgDiam.mm.","HT","SLA","LDMC", "RMR","SRL","RDMC","RTD","RASARatio", "SLA_w_cots", "LDMC_w_cots"), function (y) 
@@ -270,50 +299,29 @@ Trait_avg_sps_df<-do.call(rbind, Trait_avg_sps_df)
 
 
 # ------------------------Calculate Relative Growth Rates ----------------------
-# Tried to actually calculate based on days but messing up in the "function" section. 
-
-#View((Trait_data[names(Trait_data) %in% c("SAMPLE_ID","TRANSP_DATE","TLD","HD","TRANSP_DATE_X", "TRANSP_DATE_Y", "TRANSP_DATE_Z", "HD_Z", "Days")]))
-# Convert dates in 28-Jul format to 7/29 format 
-
-# Trait_data$TRANSP_DATE_X <- as.Date(Trait_data$TRANSP_DATE,format="%d-%B")
-# Trait_data$TRANSP_DATE_Y <- as.Date(Trait_data$TRANSP_DATE,format="%m/%d")
-# Trait_data$TRANSP_DATE_Z<-paste(Trait_data$TRANSP_DATE_X, Trait_data$TRANSP_DATE_Y)
-# Trait_data$TRANSP_DATE_Z<-gsub("NA", "", Trait_data$TRANSP_DATE_Z)
-# Trait_data$TRANSP_DATE_Z<-as.Date(Trait_data$TRANSP_DATE_Z)
-# 
-# Trait_data$HD_X <- as.Date(Trait_data$HD,format="%d-%B")
-# Trait_data$HD_Y <- as.Date(Trait_data$HD,format="%m/%d")
-# Trait_data$HD_Z<-paste(Trait_data$HD_X, Trait_data$HD_Y)
-# Trait_data$HD_Z<-gsub("NA", "", Trait_data$HD_Z)
-# Trait_data$HD_Z<-as.Date(Trait_data$HD_Z)
-# 
-# Trait_data$TRANSP_DATE_Z<-gsub("2020", "2017",Trait_data$TRANSP_DATE_Z)
-# Trait_data$HD_Z<-gsub("2020", "2017",Trait_data$HD_Z)
-# 
-# Trait_data [Trait_data$SAMPLE_ID == "ELTR_UTC_TMC_4_H4_B", "HD_Z"] <-as.character("2018-01-03")
-# Trait_data [Trait_data$SAMPLE_ID == "ELTR_UTC_TMC_7_H4_B", "HD_Z"] <-as.character("2018-01-03")
-# Trait_data [Trait_data$SAMPLE_ID == "HEAN_UTEC_CI_18_H4_B", "HD_Z"] <-as.character("2018-01-02")
-# 
-# Trait_data$Days<-round(as.numeric(difftime(Trait_data$HD_Z, Trait_data$TRANSP_DATE_Z, units = "days"), digits = 0))
-# Trait_data<-Trait_data[!names(Trait_data) %in% c("TRANSP_DATE_X","TRANSP_DATE_Y", "HD_X", "HD_Y") ]
-# 
-# Traitdata_days_avg<-agg_mean_fun(Trait_data, "Days", "H_num", "POP_ID", c("H_num","POP_ID","value", "Days_avg"))
 
 # Sum of aboveground for each sample 
 Trait_data$Above_weight_sum <- rowSums(Trait_data[,c("CWD","LWD", "SWD","LWD_A","LWD_B", "BWD_A", "SWD_A")], na.rm = TRUE)
 Trait_data$Tot_weight_sum <- rowSums(Trait_data[,c("Above_weight_sum","RWD")], na.rm = TRUE)
+Trait_data$Tot_weight_sum_mg<-Trait_data$Tot_weight_sum *1000
+Trait_data$Tot_weight_sum_mg[Trait_data$Tot_weight_sum_mg == 0] <- NA
+
+Trait_data$Tot_weight_sum_mg_ln<-log(Trait_data$Tot_weight_sum_mg)
+Trait_data$SumOfLength.cm._ln<-log(Trait_data$SumOfLength.cm.)
+
 
 # Add a "Days" column to dataset to calculate growth rates 
 Trait_data$Days <- as.factor(Trait_data$H_num)
 levels(Trait_data$Days) <- c("10","24","42","84")
 
-agg_ls_RGR<-lapply(c("Above_weight_sum","Tot_weight_sum", "RWD","SumOfLength.cm."), function (y) 
+agg_ls_RGR<-lapply(c("Tot_weight_sum_mg","Tot_weight_sum_mg_ln","SumOfLength.cm.", "SumOfLength.cm._ln"), function (y) 
   agg_mean_fun(Trait_data, y, "Days","POP_ID", c("H_num","POP_ID","value","trait")))
 
 # Merge into one dataset
 agg_df<-do.call(cbind, agg_ls_RGR)
-agg_df<-agg_df[ c(1,2,3,7,11,15) ] # column names are similar so indexing 
-colnames(agg_df)<-c("H_num","POP_ID","Above_weight_avg","Tot_weight_avg","Below_weight_avg","RL_avg")
+agg_df<-agg_df[ c(1,2,3,7,11, 15) ] # column names are similar so indexing 
+
+colnames(agg_df)<-c("H_num","POP_ID","Tot_weight_avg_mg","Tot_weight_avg_mg_ln","RL_avg_cm", "RL_avg_cm_ln")
 GrowthRates_Traits2017_3<-agg_df
 GrowthRates_Traits2017_3$H_num<-as.numeric(as.character(GrowthRates_Traits2017_3$H_num))
 
@@ -322,14 +330,23 @@ GrowthRates_Traits2017_3<-GrowthRates_Traits2017_3[order( GrowthRates_Traits2017
 rownames(GrowthRates_Traits2017_3)<-NULL
 
 Growth_calc<- by(GrowthRates_Traits2017_3, GrowthRates_Traits2017_3$POP_ID, function(df){
-  df$RGR_Tot_ln = growth_function(df$Tot_weight_avg, df$H_num)
-  df$RER_ln = growth_function(df$RL_avg, df$H_num)
-  df$RER = growth_function_not_log(df$RL_avg, df$H_num)
-  df$RGR_Tot = growth_function_not_log(df$Tot_weight_avg, df$H_num)
+  df$RER_rel = relative_change_function(df$RL_avg_cm, df$H_num)
+  df$GR_rel = relative_change_function(df$Tot_weight_avg_mg, df$H_num)
+  #df$RER = growth_function_not_log(df$RL_avg_cm, df$H_num)
+  #df$RGR_Tot = growth_function_not_log(df$Tot_weight_avg_mg, df$H_num)
+  #df$RGR_Tot_lnvals<-growth_function_not_log(df$Tot_weight_avg_mg_ln, df$H_num)
   df
 })
 
-Growth_calc_df<-do.call(rbind, Growth_calc)
+Growth_calc2<-lapply(Growth_calc, shift_down_function_RER)
+Growth_calc3<-lapply(Growth_calc2, shift_down_function_GR)
+
+Growth_calc_df<-do.call(rbind, Growth_calc3)
+Growth_calc_df$RER_rel2<-ifelse((Growth_calc_df$RER_rel2 <0), 0.001, Growth_calc_df$RER_rel2)
+Growth_calc_df$GR_rel2<-ifelse((Growth_calc_df$GR_rel2 <0), 0.001, Growth_calc_df$GR_rel2)
+
+Growth_calc_df$RRER_ln<-log(Growth_calc_df$RER_rel2)
+Growth_calc_df$RGR_Tot_ln<-log(Growth_calc_df$GR_rel2)
 
 GrowthRates_Traits2017_3<-pop_id_function(Growth_calc_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
 GrowthRates_Traits2017_3$Days<-GrowthRates_Traits2017_3$H_num
@@ -337,8 +354,11 @@ levels(GrowthRates_Traits2017_3$H_num)[(GrowthRates_Traits2017_3$H_num) %in% c("
 rownames(GrowthRates_Traits2017_3)<-NULL
 GrowthRates_Traits2017_3[!GrowthRates_Traits2017_3$H_num  == 0.01, ]
 
-# -------------------- Combine growth rate data and trait population data --------------------
 
+GrowthRates_Traits2017_3<-GrowthRates_Traits2017_3[c("H_num","POP_ID","Tot_weight_avg_mg","Tot_weight_avg_mg_ln","RL_avg_cm","RL_avg_cm_ln","RER_rel2", "GR_rel2", "RRER_ln", "RGR_Tot_ln")]
+
+
+# -------------------- Combine growth rate data and trait population data --------------------
 Pop_avg_data_2<- reshape(Trait_avg_pop_df_3, idvar = c("POP_ID","H_num","GrowthForm", "SPECIES"), timevar = "trait", direction = "wide")
 ag2<-Pop_avg_data_2
 # Data transformations to improve normality 
@@ -347,84 +367,23 @@ ag2[cols]<-log(ag2[cols])
 colnames(ag2)[5:16]<-c("ln.SumOfLength.cm.","ln.value.SumOfAvgDiam.mm.","ln.HT", "ln.SLA", "ln.LDMC", "ln.RMR", "ln.SRL", "ln.RDMC", "ln.RTD","ln.RASARatio", "ln.SLA_w_cots","ln.LDMC_w_cots")
 
 Pop_avg_data_3<-merge(Pop_avg_data_2,ag2, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
-Pop_avg_data_wrates<-merge(Pop_avg_data_3,GrowthRates_Traits2017_3, by = c("H_num","POP_ID", "SPECIES", "GrowthForm"))
+Pop_avg_data_wrates<-merge(Pop_avg_data_3,GrowthRates_Traits2017_3, by = c("H_num","POP_ID"))
 
 #Back into long format
 Pop_avg_data_wrates_long<-reshape(Pop_avg_data_wrates, 
   direction = "long",
-  varying = names(Pop_avg_data_wrates)[5:36],
+  varying = names(Pop_avg_data_wrates)[c(5:28,33:36)],
   v.names = "value",
   idvar = c("H_num","POP_ID"),
   timevar = "trait",
-  times = names(Pop_avg_data_wrates)[5:36])
+  times = names(Pop_avg_data_wrates)[c(5:28,33:36)])
+
+Pop_avg_data_wrates_long<-Pop_avg_data_wrates_long[,!names(Pop_avg_data_wrates_long) %in% c("Tot_weight_avg_mg", "Tot_weight_avg_mg_ln", "RL_avg_cm","RL_avg_cm_ln")]
 
 rownames(Pop_avg_data_wrates_long) <- NULL
 
-
-# ------------------------Calculate Plasticity Index ----------------------
-
-agg_ls_PI_traits<-lapply(c("SLA","LDMC", "RMR","SRL","RDMC","RTD"), function (y) 
-  agg_mean_fun(Trait_data, y, "Days","SPECIES", c("Days","SPECIES","value","trait")))
-
-agg_ls_PI_growthrates<-lapply(c("RER_ln","RGR_Tot_ln","RGR_Above_ln","RGR_Below_ln"), function (y) 
-  agg_mean_fun(GrowthRates_Traits2017_3, y, "Days","SPECIES", c("Days","SPECIES","value","trait")))
-
-## Full dataset 
-Trait_avg<-do.call(rbind,agg_ls_PI_traits)
-RGR_avg<-do.call(rbind, agg_ls_PI_growthrates)
-
-All_Species_avg<-rbind(Trait_avg,RGR_avg)
-Trait_splits_PI = split(All_Species_avg, paste(All_Species_avg$SPECIES, All_Species_avg$trait))
-
-distances<-lapply(Trait_splits_PI, dist_fun)
-distances_all<-do.call(rbind.data.frame, distances)
-distances_all<-distances_all[complete.cases(distances_all), ]
-
-## Without H1 datast for SLA and LDMC for FORB species (most didn't really have true leaves)
-Trait_avg_10day_ForbsDrops<-Trait_avg[!((Trait_avg$Days) %in% c("10") & 
-                               (Trait_avg$trait) %in% c("SLA","LDMC") &
-                               (Trait_avg$SPECIES) %in% c("ACMI","ARTR","HEVI","MACA","PLPA","PAMU","HEAN")),]
-Species_splits_PI_10day = split(Trait_avg_10day_ForbsDrops, paste(Trait_avg_10day_ForbsDrops$SPECIES, Trait_avg_10day_ForbsDrops$Trait))
-
-distances_10day<-lapply(Species_splits_PI_10day, dist_fun)
-distances_all_10day<-do.call(rbind.data.frame, distances_10day)
-
-
-### ----------------------- Calculate relative change (base traits ) ----------------------------
-
-agg_ls_relative_traits<-lapply(c("SLA","LDMC", "RMR","SRL","RDMC","RTD"), function (y) 
-  agg_mean_fun(Trait_data, y, "Days","POP_ID", c("Days","POP_ID","value","trait")))
-
-agg_relative_traits <-do.call(rbind, agg_ls_relative_traits)
-agg_relative_traits[agg_relative_traits == 0] <- NA 
-
-agg_relative_traits_wide<-spread(agg_relative_traits, trait, value)
-
-RC_calc<- by(agg_relative_traits_wide, agg_relative_traits_wide$POP_ID, function(df){
-  df$rel_LDMC = relative_change_function(df$LDMC)
-  df$rel_LDMC2 = df$rel_LDMC/shift(df$LDMC, 1L, type = "lag")
-  df$rel_RDMC = relative_change_function(df$RDMC)
-  df$rel_RDMC2 = df$rel_RDMC/shift(df$RDMC, 1L, type = "lag")
-  df$rel_RMR = relative_change_function(df$RMR)
-  df$rel_RMR2 = df$rel_RMR/shift(df$RMR, 1L, type = "lag")
-  df$rel_RTD = relative_change_function(df$RTD)
-  df$rel_RTD2 = df$rel_RTD/shift(df$RTD, 1L, type = "lag")
-  df$rel_SLA = relative_change_function(df$SLA)
-  df$rel_SLA2 = df$rel_SLA/shift(df$SLA, 1L, type = "lag")
-  df$rel_SRL = relative_change_function(df$SRL)
-  df$rel_SRL2 = df$rel_SRL/shift(df$SRL, 1L, type = "lag")
-  df
-}) 
-
-Rel_cal_df<-do.call(rbind, RC_calc)
-Rel_cal_df<-Rel_cal_df[,!names(Rel_cal_df) %in% c("rel_LDMC", "rel_RDMC","rel_RMR", "rel_RTD","rel_SLA", "rel_SRL")]
-Rel_cal_df$H_num<-as.factor(Rel_cal_df$Days)
-Rel_cal_df_3<-pop_id_function(Rel_cal_df, "POP_ID", "_", c("SPECIES","LOCATION_CODE","POP_CODE"))
-
-levels(Rel_cal_df_3$H_num)[(Rel_cal_df_3$H_num) %in% c("10","24","42","84")]<-c("H1","H2","H3","H4")
-
 ### Write complete dataset to CSV 
-write.csv(Trait_data, file = "Data_Generated/TraitData_2017.csv")
+write.csv(Trait_data_w_ln3_long, file = "Data_Generated/TraitData_2017.csv")
 write.csv(GrowthRates_Traits2017_3, "Data_Generated/TraitData_GrowthRates_2017.csv")
 write.csv(distances_all, "Data_Generated/TraitData_Plasticity_2017.csv")
 write.csv(distances_all_10day, "Data_Generated/TraitData_Plasticity_2017_10day.csv")
@@ -433,5 +392,13 @@ write.csv(Trait_avg_pop_df_3, "Data_Generated/TraitData_PopAvg_2017.csv")
 write.csv(Rel_cal_df_3, "Data_Generated/TraitData_RelativeDiff_2017.csv")
 write.csv(Pop_avg_data_wrates_long, "Data_Generated/TraitData_PopAvg_wRates_2017.csv")
 
+######## Growth plots 
+agg_gr<-aggregate(x = GrowthRates_Traits2017_3$Tot_weight_avg_mg,
+                  by = list(GrowthRates_Traits2017_3$SPECIES, GrowthRates_Traits2017_3$H_num), 
+                  FUN = mean)
+colnames(agg_gr) <- c("Species","Harvest","mg")
+
+GR_plot_ALL<-ggplot(agg_gr, aes(x = Harvest, y = mg))+geom_point() + facet_wrap(.~Species, ncol = 3, scales = "free") # Look at the data 
+GR_plot_noH4<-ggplot(agg_gr[!agg_gr$Harvest %in% c("H4"),], aes(x = Harvest, y = mg))+geom_point() + facet_wrap(.~Species, ncol = 3, scales = "free") # Look at the data 
 
 
