@@ -21,9 +21,14 @@ growth_function_not_log<- function(trait, days){
   c(NA, diff(trait)/diff(days))
 }
 
+# Growth function without log data 
+growth_function_ln.diff<- function(trait, days){
+  c(NA, log(diff(trait))/diff(days))
+}
+
 # Relative change function 
-relative_change_function<- function(trait){
-  c(NA,diff(trait))
+relative_change_function<- function(trait, days){
+  c(diff(trait)/(diff(days)* trait))
 }
 
 # Distance function for Plasticity Index 
@@ -46,3 +51,18 @@ pop_id_function<-function(df,ID, character, columnnames){
   tmp3$GrowthForm<- ifelse(tmp3$SPECIES %in% c("ACMI","ARTR","HEAN","HEVI","MACA","PAMU","PLPA"), "FORB", "GRASS")
   tmp3
 }
+
+
+shift <- function(x, n){
+  c(x[-(seq(n))], rep(NA, n))
+}
+
+shift_down_function_RER<-function(df) {
+  transform(df, RER_rel2 = c(NA, RER_rel[-nrow(df)]))
+}
+
+shift_down_function_GR<-function(df) {
+  transform(df, GR_rel2 = c(NA, GR_rel[-nrow(df)]))
+}
+
+
